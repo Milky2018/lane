@@ -1,0 +1,16 @@
+func main() {
+  let f2 = (x : Number) -> x;
+  let f3 = func() {
+    return 3;
+  };
+  f2(4);
+  return f4(f2(1));
+}
+
+func f1() {
+  return 2;
+}
+
+func f4(x : Number) {
+  return x;
+}

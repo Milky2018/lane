@@ -1,0 +1,11 @@
+func f1(x : Number) {
+  return x + x;
+}
+
+func f2(x : Number) {
+  return x + x + x;
+}
+
+func main() {
+  return f1(f2(10));
+}

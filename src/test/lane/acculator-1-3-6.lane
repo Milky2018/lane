@@ -1,0 +1,15 @@
+func acc(n : Number) {
+  let mut a = n;
+  return func(i : Number) {
+    a = a + i;
+    return a;
+  };
+}
+
+func main() {
+  let ac = acc(0);
+  print(ac(1));
+  print(ac(2));
+  print(ac(3));
+  return 0;
+}
