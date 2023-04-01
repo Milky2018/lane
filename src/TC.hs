@@ -1,59 +1,76 @@
-module TC where 
-import AST
-import Builtins
-import Env
-import Err
-import TAST
-import Ty
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Replace case with fromMaybe" #-}
+module TC (typeCheck, elimType) where
+import AST ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..), LTLStmt )
+import Builtins ( addTBuiltins )
+import Env ( emptyEnv, lookupEnv, extendEnv )
+import Err ( LResult, LErr(..) )
+import TAST ( TEnv, MTProg, MTExpr, MTStmt )
+import Ty ( LType(..) )
+import Control.Monad (foldM)
 
-typeCheck :: LTProg -> Maybe LErr 
-typeCheck (LTProg e) = case tc e (addTBuiltins emptyEnv) of 
-  Left err -> Just err 
-  Right ty -> Nothing
+elimType :: MTProg -> LProg 
+elimType (Prog stmts) = Prog $ map elimTypeStmt stmts 
 
-tc :: LTExpr -> TEnv -> LResult LType 
-tc (LTExprInt _) _ = pure LTypeInt 
-tc (LTExprBool _) _ = pure LTypeBool
-tc LTExprUnit _ = pure LTypeUnit 
-tc (LTExprString _) _ = pure LTypeString 
-tc (LTExprId var) env = case envLookup var env of 
-  Nothing -> Left $ LErr $  "unbound variable: " ++ var
-  Just ty -> Right ty
-tc (LTExprIf cond then_ else_) env = do 
-  condTy <- tc cond env 
-  thenTy <- tc then_ env 
-  elseTy <- tc else_ env 
-  if condTy == LTypeBool && thenTy == elseTy 
-    then Right thenTy 
-    else Left $ LErr "type error in if expression"
-tc (LTExprLam var ty body retTy) env =  
-  -- TODO: we need TYPE INFERRENCE here 
-  case ty of 
-    Nothing -> Left $ LErr "type inferrence has not been implemented, please provide type annotations"
-    Just ty -> do 
-      bodyTy <- tc body (extendEnv var ty env)
-      case retTy of 
-        Nothing -> Right $ LTypeLam ty bodyTy
-        Just retTy -> if retTy == bodyTy 
-          then Right $ LTypeLam ty bodyTy 
-          else Left $ LTypeErr body retTy bodyTy
-tc (LTExprApp f arg) env = do 
-  fTy <- tc f env 
-  argTy <- tc arg env 
-  case fTy of 
-    LTypeLam argTy' retTy -> if argTy == argTy' 
-      then Right retTy 
-      else Left $ LTypeErr arg argTy argTy'
-    _ -> Left $ LErr $ "type error in application: " ++ show f ++ " is not a function"
+elimTypeStmt :: MTStmt -> LTLStmt
+elimTypeStmt (TLExp name _ body) = TLExp name () (elimTypeExpr body)
 
-elimType :: LTProg -> LProg
-elimType (LTProg e) = LProg $ elimTypeExpr e
-  where elimTypeExpr :: LTExpr -> LExpr
-        elimTypeExpr (LTExprInt i) = LExprInt i
-        elimTypeExpr (LTExprString s) = LExprString s
-        elimTypeExpr (LTExprBool b) = LExprBool b
-        elimTypeExpr LTExprUnit = LExprUnit
-        elimTypeExpr (LTExprId i) = LExprId i
-        elimTypeExpr (LTExprApp e1 e2) = LExprApp (elimTypeExpr e1) (elimTypeExpr e2)
-        elimTypeExpr (LTExprLam arg _ body _) = LExprLam arg (elimTypeExpr body)
-        elimTypeExpr (LTExprIf cond b1 b2) = LExprIf (elimTypeExpr cond) (elimTypeExpr b1) (elimTypeExpr b2)
+elimTypeExpr :: MTExpr -> LExpr
+elimTypeExpr (EBool b) = EBool b
+elimTypeExpr (EInt i) = EInt i
+elimTypeExpr EUnit = EUnit
+elimTypeExpr (EString s) = EString s
+elimTypeExpr (EId s) = EId s
+elimTypeExpr (EApp e1 e2) = EApp (elimTypeExpr e1) (elimTypeExpr e2)
+elimTypeExpr (ELam name _ body _) = ELam name () (elimTypeExpr body) ()
+elimTypeExpr (EIf e1 e2 e3) = EIf (elimTypeExpr e1) (elimTypeExpr e2) (elimTypeExpr e3) 
+
+
+typeCheck :: MTProg -> Maybe LErr
+typeCheck (Prog stmts) = case tcStmts stmts (addTBuiltins emptyEnv) of
+  Left err -> Just err
+  Right _ -> Nothing
+
+tcStmts :: [MTStmt] -> TEnv -> LResult TEnv
+tcStmts ss env = foldM (flip tcStmt) env ss
+
+tcStmt :: MTStmt -> TEnv -> LResult TEnv
+tcStmt (TLExp name _ body) env = do
+  t <- tc body env
+  return $ extendEnv name t env
+
+-- TODO: type inference
+tc :: MTExpr -> TEnv -> LResult LType
+tc (EBool _) _ = return LTBool
+tc (EInt _) _ = return LTInt
+tc EUnit _ = return LTUnit
+tc (EString _) _ = return LTString
+tc (EId x) env = case lookupEnv x env of
+    Just t  -> return t
+    Nothing -> Left $ LErr ("Unbound variable: " ++ x)
+tc (EApp e1 e2) env = do
+    t1 <- tc e1 env
+    t2 <- tc e2 env
+    case t1 of
+        LTLam t1' t1'' | t1' == t2 -> return t1''
+        _ -> Left $ LTErr (EApp e1 e2) t1 t2
+tc (ELam x mt1 e mt2) env = do
+    t1 <- case mt1 of
+        Just t  -> return t
+        Nothing -> Left $ LErr ("Missing type annotation for argument: " ++ x)
+    let env' = extendEnv x t1 env
+    t2 <- tc e env'
+    case mt2 of
+        Just t  | t == t2 -> return (LTLam t1 t2)
+        Just t  -> Left $ LTErr (ELam x mt1 e mt2) t t2
+        Nothing -> return (LTLam t1 t2)
+tc (EIf e1 e2 e3) env = do
+    t1 <- tc e1 env
+    case t1 of
+        LTBool -> do
+            t2 <- tc e2 env
+            t3 <- tc e3 env
+            if t2 == t3
+                then return t2
+                else Left $ LTErr (EIf e1 e2 e3) t2 t3
+        _ -> Left $ LTErr (EIf e1 e2 e3) t1 LTBool

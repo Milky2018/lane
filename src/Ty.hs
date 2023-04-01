@@ -1,19 +1,21 @@
 module Ty where
 
 data LType = 
-    LTypeInt 
-  | LTypeString 
-  | LTypeBool 
-  | LTypeUnit 
-  | LTypeLam LType LType
-  deriving (Show, Eq)
+    LTInt 
+  | LTString 
+  | LTBool 
+  | LTUnit 
+  | LTLam LType LType
+  | LTVar Int
+  deriving (Show, Eq) 
 
 pretty :: LType -> String
-pretty LTypeInt = "Int"
-pretty LTypeString = "String"
-pretty LTypeBool = "Bool"
-pretty LTypeUnit = "()"
-pretty (LTypeLam t1 t2) = "(" ++ pretty t1 ++ " -> " ++ pretty t2 ++ ")"
+pretty LTInt = "Int"
+pretty LTString = "String"
+pretty LTBool = "Bool"
+pretty LTUnit = "()"
+pretty (LTLam t1 t2) = "(" ++ pretty t1 ++ " -> " ++ pretty t2 ++ ")"
+pretty (LTVar a) = "TVar" ++ show a
 
 prettyMaybe :: Maybe LType -> String 
 prettyMaybe (Just a) = pretty a 

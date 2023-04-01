@@ -1,18 +1,16 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use <$>" #-}
+{-# OPTIONS_GHC -Wno-missing-signatures #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 module Parser (
   parseLaneProg
 ) where
 
-import Raw
-
 import Text.ParserCombinators.Parsec
 import Numeric
 import Control.Applicative (empty)
-import Text.Parsec.Language
 import Text.Parsec.Expr
-import Data.Char (isDigit)
-import Text.ParserCombinators.Parsec.Token
+import Raw (RProg (..), RExpr (..), RType (..), TypedName (..), RTLStmt (..))
 
 identifier :: Parser String
 identifier = do
@@ -25,11 +23,11 @@ identifier = do
 
 parens :: Parser a -> Parser a
 parens p = do
-  char '('
+  _ <- char '('
   spaces
   res <- p
   spaces
-  char ')'
+  _ <- char ')'
   return res
 
 parseLaneProg :: String -> Either ParseError RProg
@@ -39,7 +37,45 @@ laneParser :: Parser RProg
 laneParser = spaces >> pProg
 
 pProg :: Parser RProg
-pProg = RProg <$> (pExpr <* eof)
+pProg = RProg <$> (sepBy pTLStmt (spaces *> string resSemi <* spaces) <* eof)
+
+pTLStmt :: Parser RTLStmt
+pTLStmt = choice [
+    try pTLExp
+  , try pTLFunc
+  ] <?> "top level statement"
+
+pTLExp :: Parser RTLStmt
+pTLExp = do
+  _ <- string resDef
+  spaces
+  typedName <- pTypedName
+  spaces
+  _ <- string resFat
+  spaces
+  body <- pExpr
+  return $ RTLExp typedName body
+
+pTLFunc :: Parser RTLStmt
+pTLFunc = do
+  _ <- string resDef
+  spaces
+  name <- identifier
+  spaces
+  args <- many1 (Parser.parens pTypedName <* spaces)
+  t <-
+    do
+    _ <- string resTyping
+    spaces
+    ty <- pType
+    return (Just ty)
+    <|>
+    return Nothing
+  spaces
+  _ <- string resFat
+  spaces
+  body <- pExpr
+  return $ RTLFunc name args body t
 
 pExpr :: Parser RExpr
 pExpr = expr <* spaces where
@@ -74,21 +110,21 @@ eol =
 
 spacef = spaces
          *> notFollowedBy (choice $ map (try . string) laneReserved)
-         >> return (RExprBin resSpace)
+         >> return (REBin resSpace)
 
 pApp = buildExpressionParser [[Infix spacef AssocLeft]] pExpr''
 
-pUnit = string resUnit >> return RExprUnit
+pUnit = string resUnit >> return REUnit
 
-pBool = (string resTrue >> return (RExprBool True))
-    <|> (string resFalse >> return (RExprBool False))
+pBool = (string resTrue >> return (REBool True))
+    <|> (string resFalse >> return (REBool False))
 
 pInt = do s <- getInput
           case {-# readSigned #-} readDec s of
-            [(n, s')] -> RExprInt n <$ setInput s'
+            [(n, s')] -> REInt n <$ setInput s'
             _ -> empty
 
-pString = between (char '\"') (char '\"') (many pStringChar) >>= \s -> return (RExprString s)
+pString = between (char '\"') (char '\"') (many pStringChar) >>= \s -> return (REString s)
 
 pStringChar :: Parser Char
 pStringChar = char '\\' *> (escape <|> unicode)
@@ -102,19 +138,22 @@ escape = choice (zipWith decode "bnfrt\\\"/" "\b\n\f\r\t\\\"/")
 unicode :: Parser Char
 unicode = char 'u' *> (decode <$> count 4 hexDigit)
   where decode x = toEnum code
-          where ((code,_):_) = readHex x
+          where code = case readHex x of
+                  ((c,_):_) -> c
+                  _ -> error "unicode decode error"
+
 
 pId :: Parser RExpr
-pId = RExprId <$> Parser.identifier
+pId = REId <$> Parser.identifier
 
 pType :: Parser RType
-pType = ty <* spaces where 
+pType = ty <* spaces where
   ty = try (buildExpressionParser [[Infix pArrowType AssocRight]] pType')
     <|> pTypeAtom
     <?> "type"
 
 pType' :: Parser RType
-pType' = ty <* spaces where 
+pType' = ty <* spaces where
   ty = Parser.parens pType <|> pTypeAtom <?> "type"
 
 pTypeAtom = choice
@@ -126,81 +165,81 @@ pTypeAtom = choice
 
 pArrowType = do
   spaces
-  string resImpl
+  _ <- string resArrow
   spaces
   return RTFunc
 
 pTypedName :: Parser TypedName
 pTypedName = do
-  id <- Parser.identifier
+  id' <- Parser.identifier
   spaces
   (
     do
-    string resTyping
+    _ <- string resTyping
     spaces
     ty <- pType
-    return (TypedName id (Just ty))) <|>
-    return (TypedName id Nothing)
+    return (TypedName id' (Just ty))) <|>
+    return (TypedName id' Nothing)
 
 pLet = do
-  string resLet
+  _ <- string resLet
   spaces
-  letClauses <- pLetClause `sepBy1` (char ';' <* spaces)
+  letClauses <- pLetClause `sepBy1` (string resComma <* spaces)
   spaces
-  string resIn
+  _ <- string resIn
   spaces
   e2 <- pExpr
-  return $ RExprLet letClauses e2
+  return $ RELet letClauses e2
 
 pLetClause :: Parser (TypedName, RExpr)
 pLetClause = do
-  id <- pTypedName
+  id' <- pTypedName
   spaces
-  string resAssign
+  _ <- string resAssign
   spaces
   e1 <- pExpr
-  return (id, e1)
+  return (id', e1)
 
 pLam = do
-  string resLam
+  _ <- string resLam
   spaces
   arg <- many1 (Parser.parens pTypedName <* spaces)
-  t <- 
+  t <-
     do
-    string resTyping
+    _ <- string resTyping
     spaces
     ty <- pType
-    return (Just ty) 
+    return (Just ty)
     <|>
     return Nothing
-  spaces 
-  string resFat
+  spaces
+  _ <- string resFat
   spaces
   body <- pExpr
-  return $ RExprLam arg body t
+  return $ RELam arg body t
 
 pIf = do
-  string resIf
+  _ <- string resIf
   spaces
   cond <- pExpr
   spaces
-  string resThen
+  _ <- string resThen
   spaces
   e1 <- pExpr
   spaces
-  string resElse
+  _ <- string resElse
   spaces
   e2 <- pExpr
-  return $ RExprIf cond e1 e2
+  return $ REIf cond e1 e2
 
 pOp ops = do
   spaces
   op <- choice (map (try . string) ops)
   spaces
-  return $ RExprBin op
+  return $ REBin op
 
 laneReserved =
-  [ resImpl
+  [ resArrow
   , resEq
   , resNeq
   , resLt
@@ -218,6 +257,7 @@ laneReserved =
   , resThen
   , resElse
   , resLam
+  , resDef
   , resTrue
   , resFalse
   , resUnit
@@ -228,9 +268,11 @@ laneReserved =
   , resTString
   , resTyping
   , resFat
+  , resSemi
+  , resComma
   ]
 
-resImpl = "->"
+resArrow = "->"
 resEq = "=="
 resNeq = "!="
 resLt = "<"
@@ -248,6 +290,7 @@ resIf = "if"
 resThen = "then"
 resElse = "else"
 resLam = "fun"
+resDef = "def"
 resTrue = "true"
 resFalse = "false"
 resUnit = "unit"
@@ -258,6 +301,8 @@ resTInt = "Int"
 resTString = "String"
 resTyping = ":"
 resFat = "=>"
+resSemi = ";"
+resComma = ","
 
 opTable =
   [ [Infix (pOp [resEq, resNeq, resLt, resGt, resLeq, resGeq]) AssocLeft]
@@ -266,18 +311,18 @@ opTable =
   ]
 
 examples =
-  [ ("x + y / z", RExprBin resAdd (RExprId "x") (RExprBin resDiv (RExprId "y") (RExprId "z")))
-  , ("let x = 1 in let y = 2 in x + y", RExprLet [(TypedName "x" Nothing,RExprInt 1)] (RExprLet [(TypedName "y" Nothing,RExprInt 2)] (RExprBin "+" (RExprId "x") (RExprId "y"))))
-  , ("x + y  * z w", RExprBin resAdd (RExprId "x") (RExprBin resMul (RExprId "y") (RExprBin resSpace (RExprId "z") (RExprId "w"))))
-  , ("(x+y) * z w", RExprBin resMul (RExprBin resAdd (RExprId "x") (RExprId "y")) (RExprBin resSpace (RExprId "z") (RExprId "w")))
-  , ("operator operand", RExprBin resSpace (RExprId "operator") (RExprId "operand"))
-  , ("if true then 1 else 2", RExprIf (RExprBool True) (RExprInt 1) (RExprInt 2))
-  , ("let x = 1; y = 2; z = 3 in x + y + z", RExprLet [(TypedName "x" Nothing,RExprInt 1),(TypedName "y" Nothing,RExprInt 2),(TypedName "z" Nothing,RExprInt 3)] (RExprBin "+" (RExprBin "+" (RExprId "x") (RExprId "y")) (RExprId "z")))
-  , ("(fun (x : Int) => x + y) 10", RExprBin " " (RExprLam [TypedName "x" (Just RTInt)] (RExprBin "+" (RExprId "x") (RExprId "y")) Nothing) (RExprInt 10))
-  , ("(fun (x : Int) : Int => x + y) 10", RExprBin " " (RExprLam [TypedName "x" (Just RTInt)] (RExprBin "+" (RExprId "x") (RExprId "y")) (Just RTInt)) (RExprInt 10))
+  [ ("def main => x + y / z"
+  , [RTLExp
+      (TypedName "main" Nothing)
+      (REBin
+        resAdd
+        (REId "x")
+        (REBin resDiv (REId "y") (REId "z")))])
   ]
 
 checkExamples = map (\(s, r) -> (s, parseLaneProg s == Right (RProg r))) examples
 
 showExamples = mapM_ pretty checkExamples where
-  pretty (s, r) = putStrLn (if r then "pass" else "fail: " ++ s ++ "")
+  pretty (s, r) = putStrLn (if r then "pass" else "fail: " ++ s)
+
+
