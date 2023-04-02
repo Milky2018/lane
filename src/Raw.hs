@@ -4,7 +4,7 @@ import AST
   ( Expr (EApp, EBool, EId, EIf, EInt, ELam, EString, EUnit), Prog (..), TLStmt (..),
   )
 import TAST (MTProg, MTStmt)
-import Ty (LType (LTBool, LTInt, LTLam, LTString, LTUnit))
+import Ty (LType (..))
 
 -- newtype RProg = RProg RExpr deriving (Show, Eq)
 newtype RProg = RProg [RTLStmt] deriving (Show, Eq)

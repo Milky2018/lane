@@ -9,7 +9,6 @@ import Err ( LResult, LErr(LBug), reportErr )
 import Val ( VEnv, LVal(..) )
 import Builtins ( addBuiltins )
 import Env ( emptyEnv, lookupEnv, extendEnv )
-import Control.Monad (foldM)
 
 data FinalVal =
     FinalBool Bool
@@ -19,11 +18,21 @@ data FinalVal =
   | FinalErr String
   deriving (Show, Eq)
 
+createInitialEnv :: LProg -> VEnv -> VEnv
+createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
+  where
+    addDef env (TLExp name _ expr) = extendEnv name (evalTopLevelDef newEnv (TLExp name () expr)) env
+    newEnv = createInitialEnv (Prog defs) oldEnv
+
+evalTopLevelDef :: VEnv -> LTLStmt -> LVal
+evalTopLevelDef env (TLExp _ () expr) = case eval expr env of
+  Right value -> value
+  Left err    -> error $ "evalTopLevelDef: " ++ reportErr err
+
 runProg :: LProg -> FinalVal 
-runProg (Prog stmts) = -- add builtins
-  case evalStmts stmts (addBuiltins emptyEnv) of
-    Left err -> FinalErr $ reportErr err
-    Right env -> case eval (EId "main") env of 
+runProg prog = -- add builtins
+  let env = createInitialEnv prog (addBuiltins emptyEnv)
+  in case eval (EId "main") env of 
       Left err -> FinalErr $ reportErr err
       Right (LValBool b) -> FinalBool b
       Right (LValInt i) -> FinalInt i
@@ -31,14 +40,6 @@ runProg (Prog stmts) = -- add builtins
       Right (LValString s) -> FinalString s
       Right (LValLam _ _ _) -> FinalErr "lambda as main expression"
       Right (LValBif _) -> FinalErr "builtin function as main expression"
-
-evalStmts :: [LTLStmt] -> VEnv -> LResult VEnv
-evalStmts ss env = foldM (flip evalStmt) env ss
-
-evalStmt :: LTLStmt -> VEnv -> LResult VEnv
-evalStmt (TLExp name _ body) env = do
-  v <- eval body env
-  return $ extendEnv name v env
 
 eval :: LExpr -> VEnv -> LResult LVal
 eval (EBool b) env = return $ LValBool b

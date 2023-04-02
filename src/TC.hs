@@ -4,7 +4,7 @@ module TC (typeCheck, elimType) where
 import AST ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..), LTLStmt )
 import Builtins ( addTBuiltins )
 import Env ( emptyEnv, lookupEnv, extendEnv )
-import Err ( LResult, LErr(..) )
+import Err ( LResult, LErr(..), reportErr )
 import TAST ( TEnv, MTProg, MTExpr, MTStmt )
 import Ty ( LType(..) )
 import Control.Monad (foldM)
@@ -25,11 +25,24 @@ elimTypeExpr (EApp e1 e2) = EApp (elimTypeExpr e1) (elimTypeExpr e2)
 elimTypeExpr (ELam name _ body _) = ELam name () (elimTypeExpr body) ()
 elimTypeExpr (EIf e1 e2 e3) = EIf (elimTypeExpr e1) (elimTypeExpr e2) (elimTypeExpr e3) 
 
+initialTEnv :: MTProg -> TEnv -> TEnv
+initialTEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
+  where
+    addDef env (TLExp name ty expr) = extendEnv name (typeCheckStmt newEnv (TLExp name ty expr)) env
+    newEnv = initialTEnv (Prog defs) oldEnv
+
+typeCheckStmt :: TEnv -> MTStmt -> LType
+typeCheckStmt env (TLExp _ ty expr) = case (tc expr env, ty) of
+  (Right ty', Just ty'') -> if ty'' == ty' then ty' else error "typeCheckStmt: type mismatch"
+  (Right ty', Nothing) -> ty' 
+  (Left err, _) -> error $ "typeCheckStmt: " ++ reportErr err
 
 typeCheck :: MTProg -> Maybe LErr
-typeCheck (Prog stmts) = case tcStmts stmts (addTBuiltins emptyEnv) of
-  Left err -> Just err
-  Right _ -> Nothing
+typeCheck prog@(Prog stmts) = 
+  let tenv = initialTEnv prog (addTBuiltins emptyEnv) 
+  in case tcStmts stmts tenv of
+    Right _ -> Nothing
+    Left err -> Just err
 
 tcStmts :: [MTStmt] -> TEnv -> LResult TEnv
 tcStmts ss env = foldM (flip tcStmt) env ss

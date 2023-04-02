@@ -1,10 +1,11 @@
 module Examples (showExamples) where
-import AST (pretty, LProg)
+import AST (LProg)
 import Parser (parseLaneProg)
 import Eval ( FinalVal(FinalInt), runProg )
 import Raw (trans)
 import TC ( typeCheck, elimType )
 import Err (reportErr)
+import Pretty (Pretty(..))
 
 parseAndTrans :: String -> LProg
 parseAndTrans e = case parseLaneProg e of 
@@ -29,6 +30,7 @@ examples =
   , ("def main => let x : Int = 1, y : Int = 2 in x + y", FinalInt 3)
   , ("def f => fun (x : Int) => x + 5; def main => f 10", FinalInt 15)
   , ("def f (x : Int) => x + 5; def main => f 10", FinalInt 15)
+  , ("def main => f 10; def f (x : Int) => x + 5", FinalInt 15)
   ]
 
 showExample :: (String, FinalVal) -> IO ()

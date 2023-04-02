@@ -1,4 +1,4 @@
-module Env where
+module Env (emptyEnv, lookupEnv, extendEnv, Env) where
 
 import Data.Map
 

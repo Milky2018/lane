@@ -1,6 +1,5 @@
 module Val where 
 
-import Data.Map  
 import AST 
 import Err 
 import Env

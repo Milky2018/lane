@@ -1,4 +1,5 @@
-module AST (Expr (..), LExpr, pretty, TLStmt (..), Prog (..), LTLStmt, LProg) where 
+module AST (Expr (..), LExpr, TLStmt (..), Prog (..), LTLStmt, LProg) where 
+import Pretty (Pretty (pretty))
 
 newtype Prog t = Prog [TLStmt t] deriving (Show, Eq)
 
@@ -21,18 +22,27 @@ type LProg = Prog ()
 type LExpr = Expr ()
 type LTLStmt = TLStmt ()
 
-pretty :: LProg -> String 
-pretty (Prog stmts) = unlines $ map prettyStmt stmts
+instance Pretty t => Pretty (Expr t) where 
+  pretty = prettyExpr
 
-prettyStmt :: LTLStmt -> String
+instance Pretty t => Pretty (Prog t) where
+  pretty = prettyProg 
+
+instance Pretty t => Pretty (TLStmt t) where
+  pretty = prettyStmt
+
+prettyProg :: Pretty t => Prog t -> String 
+prettyProg (Prog stmts) = unlines $ map prettyStmt stmts
+
+prettyStmt :: Pretty t => TLStmt t -> String
 prettyStmt (TLExp name _ body) = name ++ " = " ++ prettyExpr body
 
-prettyExpr :: LExpr -> String 
+prettyExpr :: Pretty t => Expr t -> String 
 prettyExpr (EBool b) = show b 
 prettyExpr (EId i) = i 
 prettyExpr EUnit = "()" 
 prettyExpr (EString s) = show s
 prettyExpr (EInt i) = show i
 prettyExpr (EApp e1 e2) = "(" ++ prettyExpr e1 ++ " " ++ prettyExpr e2 ++ ")"
-prettyExpr (ELam arg _ body _) = "(\\" ++ arg ++ " -> " ++ prettyExpr body ++ ")"
+prettyExpr (ELam arg argT body _) = "(\\" ++ "(" ++ arg ++ " : " ++ pretty argT ++ ") -> " ++ prettyExpr body ++ ")"
 prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"

@@ -33,6 +33,7 @@ library
       Examples
       Lib
       Parser
+      Pretty
       Raw
       TAST
       TC
