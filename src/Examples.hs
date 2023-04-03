@@ -1,14 +1,14 @@
-module Examples (showExamples) where
+module Examples (showExamples, parseAndTrans) where
 import AST (LProg)
 import Parser (parseLaneProg)
-import Eval ( FinalVal(FinalInt), runProg )
+import Eval ( FinalVal(..), runProg )
 import Raw (trans)
 import TC ( typeCheck, elimType )
 import Err (reportErr)
 import Pretty (Pretty(..))
 
 parseAndTrans :: String -> LProg
-parseAndTrans e = case parseLaneProg e of 
+parseAndTrans e = case parseLaneProg e of
   Left err -> error (show err)
   Right prog -> let mtprog = trans prog in case typeCheck mtprog of 
     Nothing -> elimType mtprog
@@ -17,36 +17,32 @@ parseAndTrans e = case parseLaneProg e of
 -- check e v = runProg (parseAndTrans e) == v 
 
 examples :: [(String, FinalVal)]
-examples = 
-  [ ("def main => 1", FinalInt 1)
-  , ("def main => 1 + 2", FinalInt 3)
-  , ("def main => if true then 10 else 20", FinalInt 10)
-  , ("def main => (fun (x : Int) => x) 5", FinalInt 5)
-  , ("def main => let x : Int = 2 in x", FinalInt 2)
-  , ("def main => let f : Int -> Int = fun (f : Int) => f in f 5", FinalInt 5)
-  , ("def main => let x : Int -> Int = fun (a : Int) => a in let y : Int = 2 in x y", FinalInt 2)
-  , ("def main => (1 + 2) * 4 / 2 + 100 * 2 - 50 / 2", FinalInt 181)
-  , ("def main => (fun (x : Int) (y : Int) => x + y) 10 20", FinalInt 30)
-  , ("def main => let x : Int = 1, y : Int = 2 in x + y", FinalInt 3)
-  , ("def f => fun (x : Int) => x + 5; def main => f 10", FinalInt 15)
-  , ("def f (x : Int) => x + 5; def main => f 10", FinalInt 15)
-  , ("def main => f 10; def f (x : Int) => x + 5", FinalInt 15)
+examples =
+  [ ("def fact (n : Int) : Int => "
+  ++ "  if n == 0 then 1 else n * (fact (n - 1)); "
+  ++ "def main : Int => fact 4"
+  , FinalInt 24)
+  , ("def odd (n : Int) : Bool => "
+  ++ "  if n == 0 then false else even (n - 1); "
+  ++ "def even (n : Int) : Bool => "
+  ++ "  if n == 0 then true else odd (n - 1); "
+  ++ "def main : Bool => odd 5"
+  , FinalBool True)
   ]
 
 showExample :: (String, FinalVal) -> IO ()
-showExample (ex, expected) = do 
+showExample (ex, expected) = do
   let prog = parseAndTrans ex
-  let evaled = runProg prog 
-  putStr "\n--- " 
-  if evaled == expected 
-  then putStrLn "pass" 
+  let evaled = runProg prog
+  putStr "\n--- "
+  if evaled == expected
+  then putStrLn "pass"
   else putStrLn "!!!"
-  putStrLn $ pretty prog 
+  putStrLn $ pretty prog
   putStrLn "evaluated result: "
-  print evaled 
+  print evaled
   putStrLn "expected result: "
-  print expected 
-  
+  print expected
+
 showExamples :: IO ()
-showExamples = mapM_ showExample examples 
-  
+showExamples = mapM_ showExample examples

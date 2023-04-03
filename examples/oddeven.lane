@@ -1,0 +1,11 @@
+def odd (n : Int) : Bool =
+    if n == 0 
+    then false 
+    else even (n - 1)
+    
+def even (n : Int) : Bool =
+    if n == 0 
+    then true 
+    else odd (n - 1)
+    
+def main : Bool = odd 5

@@ -21,7 +21,7 @@ data FinalVal =
 createInitialEnv :: LProg -> VEnv -> VEnv
 createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
   where
-    addDef env (TLExp name _ expr) = extendEnv name (evalTopLevelDef newEnv (TLExp name () expr)) env
+    addDef env stmt@(TLExp name _ expr) = extendEnv name (evalTopLevelDef newEnv stmt) env
     newEnv = createInitialEnv (Prog defs) oldEnv
 
 evalTopLevelDef :: VEnv -> LTLStmt -> LVal
@@ -29,10 +29,10 @@ evalTopLevelDef env (TLExp _ () expr) = case eval expr env of
   Right value -> value
   Left err    -> error $ "evalTopLevelDef: " ++ reportErr err
 
-runProg :: LProg -> FinalVal 
+runProg :: LProg -> FinalVal
 runProg prog = -- add builtins
   let env = createInitialEnv prog (addBuiltins emptyEnv)
-  in case eval (EId "main") env of 
+  in case eval (EId "main") env of
       Left err -> FinalErr $ reportErr err
       Right (LValBool b) -> FinalBool b
       Right (LValInt i) -> FinalInt i

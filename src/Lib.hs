@@ -1,8 +1,7 @@
-module Lib
-    ( someFunc
-    ) where
+module Lib ( lanei ) where
 
-import Examples (showExamples)
+import Examples (parseAndTrans)
+import Eval
 
-someFunc :: IO ()
-someFunc = showExamples
+lanei :: String -> FinalVal 
+lanei = runProg . parseAndTrans 

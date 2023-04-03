@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           Lane
-version:        0.1.0.0
+version:        0.1.0.1
 description:    Please see the README on GitHub at <https://github.com/githubuser/Lane#readme>
 homepage:       https://github.com/githubuser/Lane#readme
 bug-reports:    https://github.com/githubuser/Lane/issues
@@ -47,11 +47,12 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , directory
     , mtl
     , parsec
   default-language: Haskell2010
 
-executable Lane-exe
+executable lane
   main-is: Main.hs
   other-modules:
       Paths_Lane
@@ -62,6 +63,7 @@ executable Lane-exe
       Lane
     , base >=4.7 && <5
     , containers
+    , directory
     , mtl
     , parsec
   default-language: Haskell2010
@@ -78,6 +80,7 @@ test-suite Lane-test
       Lane
     , base >=4.7 && <5
     , containers
+    , directory
     , mtl
     , parsec
   default-language: Haskell2010

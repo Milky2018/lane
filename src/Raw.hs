@@ -9,7 +9,7 @@ import Ty (LType (..))
 -- newtype RProg = RProg RExpr deriving (Show, Eq)
 newtype RProg = RProg [RTLStmt] deriving (Show, Eq)
 
-data RTLStmt 
+data RTLStmt
   = RTLFunc String [TypedName] RExpr (Maybe RType) -- def f (x1 : t1) (x2 : t2) ... \=> expr
   | RTLExp TypedName RExpr -- def x : t \=> expr
   deriving (Show, Eq)
@@ -39,11 +39,17 @@ data TypedName = TypedName String (Maybe RType) deriving (Show, Eq)
 trans :: RProg -> MTProg
 trans (RProg re) = Prog (map transTLStmt re)
   where
-    transTLStmt :: RTLStmt -> MTStmt 
-    transTLStmt (RTLFunc _name [] _body _ty) = error "compiler error: RTLFunc with empty argument list"
-    transTLStmt (RTLFunc name args body ty) = TLExp name (fmap transType ty) (transExpr (RELam args body ty))
+    transTLStmt :: RTLStmt -> MTStmt
     transTLStmt (RTLExp (TypedName name ty) body) = TLExp name (fmap transType ty) (transExpr body)
-    
+    transTLStmt (RTLFunc name args body ty) = TLExp name (transType <$> combineTypes (map (\(TypedName _ ty') -> ty') args) ty) (transExpr (RELam args body ty))
+
+    combineTypes :: [Maybe RType] -> Maybe RType -> Maybe RType
+    combineTypes [] rt = rt
+    combineTypes (x:xs) rt = do
+      x' <- x
+      xs' <- combineTypes xs rt
+      pure $ RTFunc x' xs'
+
     transExpr (REBool b) = EBool b
     transExpr (REInt i) = EInt i
     transExpr REUnit = EUnit

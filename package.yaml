@@ -1,5 +1,5 @@
 name:                Lane
-version:             0.1.0.0
+version:             0.1.0.1
 github:              "githubuser/Lane"
 license:             BSD3
 author:              "Author name here"
@@ -24,6 +24,7 @@ dependencies:
 - containers
 - parsec
 - mtl
+- directory 
 
 ghc-options:
 - -Wall
@@ -40,7 +41,7 @@ library:
   source-dirs: src
 
 executables:
-  Lane-exe:
+  lane:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

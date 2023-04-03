@@ -37,7 +37,7 @@ laneParser :: Parser RProg
 laneParser = spaces >> pProg
 
 pProg :: Parser RProg
-pProg = RProg <$> (sepBy pTLStmt (spaces *> string resSemi <* spaces) <* eof)
+pProg = RProg <$> (sepBy pTLStmt (spaces *> many newline <* spaces) <* eof)
 
 pTLStmt :: Parser RTLStmt
 pTLStmt = choice [
@@ -51,7 +51,7 @@ pTLExp = do
   spaces
   typedName <- pTypedName
   spaces
-  _ <- string resFat
+  _ <- string resAssign
   spaces
   body <- pExpr
   return $ RTLExp typedName body
@@ -72,7 +72,7 @@ pTLFunc = do
     <|>
     return Nothing
   spaces
-  _ <- string resFat
+  _ <- string resAssign
   spaces
   body <- pExpr
   return $ RTLFunc name args body t
@@ -213,7 +213,7 @@ pLam = do
     <|>
     return Nothing
   spaces
-  _ <- string resFat
+  _ <- string resAssign
   spaces
   body <- pExpr
   return $ RELam arg body t

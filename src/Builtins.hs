@@ -1,10 +1,10 @@
 module Builtins (NamedBif (..), addBuiltins, addTBuiltins) where
 
-import Val ( LBif, VEnv, LVal(LValInt, LValBif) )
+import Val ( LBif, VEnv, LVal(LValInt, LValBif, LValBool) )
 import AST ()
 import Err ( LResult, LErr(LErr) )
 import Env ( extendEnv )
-import Ty ( LType(LTInt, LTLam) )
+import Ty ( LType(..) )
 import TAST ( TEnv )
 
 data NamedBif = NamedBif {
@@ -26,7 +26,18 @@ addTBuiltins :: TAST.TEnv -> TAST.TEnv
 addTBuiltins env = foldr addTBuiltin env builtins
 
 builtins :: [NamedBif]
-builtins = [bifAdd, bifSub, bifMul, bifDiv]
+builtins = 
+  [ bifAdd
+  , bifSub
+  , bifMul
+  , bifDiv
+  , bifLt
+  , bifGt
+  , bifLeq 
+  , bifGeq 
+  , bifEq
+  , bifNeq
+  ]
 
 makeBifFromOp :: (LVal -> LVal -> LResult LVal) -> LBif
 makeBifFromOp op = Right . LValBif . op
@@ -54,4 +65,35 @@ bifDiv = NamedBif "/" iiiType $ makeBifFromOp div_ where
   div_ (LValInt a) (LValInt b) = Right $ LValInt $ a `div` b
   div_ _ _ = Left $ LErr "div: expected two integers"
 
+iibType :: LType 
+iibType = LTLam LTInt (LTLam LTInt LTBool)
 
+bifLt :: NamedBif
+bifLt = NamedBif "<" iibType $ makeBifFromOp add where
+  add (LValInt a) (LValInt b) = Right $ LValBool $ a < b 
+  add _ _ = Left $ LErr "lt: expected two integers"
+
+bifGt :: NamedBif
+bifGt = NamedBif ">" iibType $ makeBifFromOp add where
+  add (LValInt a) (LValInt b) = Right $ LValBool $ a > b 
+  add _ _ = Left $ LErr "gt: expected two integers"
+
+bifLeq :: NamedBif
+bifLeq = NamedBif "<=" iibType $ makeBifFromOp add where
+  add (LValInt a) (LValInt b) = Right $ LValBool $ a <= b 
+  add _ _ = Left $ LErr "leq: expected two integers"
+
+bifGeq :: NamedBif
+bifGeq = NamedBif ">=" iibType $ makeBifFromOp add where
+  add (LValInt a) (LValInt b) = Right $ LValBool $ a >= b 
+  add _ _ = Left $ LErr "geq: expected two integers"
+
+bifEq :: NamedBif
+bifEq = NamedBif "==" iibType $ makeBifFromOp add where
+  add (LValInt a) (LValInt b) = Right $ LValBool $ a == b 
+  add _ _ = Left $ LErr "eq: expected two integers"
+
+bifNeq :: NamedBif
+bifNeq = NamedBif "!=" iibType $ makeBifFromOp add where
+  add (LValInt a) (LValInt b) = Right $ LValBool $ a /= b 
+  add _ _ = Left $ LErr "neq: expected two integers"

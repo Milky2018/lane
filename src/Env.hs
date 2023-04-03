@@ -1,14 +1,14 @@
 module Env (emptyEnv, lookupEnv, extendEnv, Env) where
 
-import Data.Map
+import Data.Map.Lazy as Map 
 
 type Env k v = Map k v 
 
 emptyEnv :: Env k v  
-emptyEnv = Data.Map.empty
+emptyEnv = Map.empty
 
 lookupEnv :: Ord k => k -> Env k v -> Maybe v 
-lookupEnv = Data.Map.lookup
+lookupEnv = Map.lookup
 
 extendEnv :: Ord k => k -> v -> Env k v -> Env k v 
-extendEnv = Data.Map.insert
+extendEnv = Map.insert
