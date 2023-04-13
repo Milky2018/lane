@@ -30,6 +30,15 @@ parens p = do
   _ <- char ')'
   return res
 
+braces :: Parser a -> Parser a
+braces p = do
+  _ <- char '{'
+  spaces
+  res <- p
+  spaces
+  _ <- char '}'
+  return res
+
 parseLaneProg :: String -> Either ParseError RProg
 parseLaneProg = parse laneParser "(unknown)"
 
@@ -43,6 +52,7 @@ pTLStmt :: Parser RTLStmt
 pTLStmt = choice [
     try pTLExp
   , try pTLFunc
+  -- , try pTLStruct
   ] <?> "top level statement"
 
 pTLExp :: Parser RTLStmt
@@ -77,16 +87,30 @@ pTLFunc = do
   body <- pExpr
   return $ RTLFunc name args body t
 
+-- struct S { field1 : t1, field2 : t2, ... }
+-- pTLStruct :: Parser RTLStmt 
+-- pTLStruct = do 
+--   _ <- string resStruct 
+--   spaces 
+--   structName <- identifier
+--   spaces
+--   fields <- Parser.braces (sepBy pTypedName (spaces *> string resComma *> spaces))
+--   return $ RTLStruct structName fields
+
 pExpr :: Parser RExpr
 pExpr = expr <* spaces where
-  expr = buildExpressionParser opTable pExpr' <|> atom <?> "expression"
+  expr = buildExpressionParser opTable pExpr' <?> "expression"
 
 pExpr' :: Parser RExpr
 pExpr' = expr <* spaces where
-  expr = try pApp <|> pExpr'' <|> atom <?> "expression"
+  expr = try pApp <?> "expression"
 
-pExpr'' :: Parser RExpr
-pExpr'' = expr <* spaces where
+pExpr'' :: Parser RExpr 
+pExpr'' = expr <* spaces where 
+  expr = try pAccess <|> pExpr''' <?> "expression"
+
+pExpr''' :: Parser RExpr
+pExpr''' = expr <* spaces where
   expr = Parser.parens pExpr <|> atom <?> "expression"
 
 atom = choice [
@@ -95,6 +119,7 @@ atom = choice [
     , try pLam
     , try pUnit
     , try pBool
+    -- , try pStructCons 
     , pInt
     , pString
     , pId
@@ -119,10 +144,30 @@ pUnit = string resUnit >> return REUnit
 pBool = (string resTrue >> return (REBool True))
     <|> (string resFalse >> return (REBool False))
 
+pAccess = do
+  e <- pExpr'''
+  accessors <- many1 (string resDot >> identifier)
+  return $ foldl REAccess e accessors
+
 pInt = do s <- getInput
           case {-# readSigned #-} readDec s of
             [(n, s')] -> REInt n <$ setInput s'
             _ -> empty
+
+-- S { field1 = e1, field2 = e2, ... }
+-- pStructCons = do 
+--   structName <- identifier
+--   spaces
+--   fields <- Parser.braces (sepBy pField (spaces *> string resComma *> spaces))
+--   return $ REStructCons structName fields
+
+pField = do 
+  fieldName <- identifier
+  spaces
+  _ <- string resAssign
+  spaces
+  fieldExpr <- pExpr
+  return (fieldName, fieldExpr)
 
 pString = between (char '\"') (char '\"') (many pStringChar) >>= \s -> return (REString s)
 
@@ -142,7 +187,6 @@ unicode = char 'u' *> (decode <$> count 4 hexDigit)
                   ((c,_):_) -> c
                   _ -> error "unicode decode error"
 
-
 pId :: Parser RExpr
 pId = REId <$> Parser.identifier
 
@@ -161,7 +205,8 @@ pTypeAtom = choice
   , try $ string resTInt >> return RTInt
   , try $ string resTString >> return RTString
   , try $ string resTUnit >> return RTUnit
-  ]
+  -- , try $ identifier >> return RTUserDefined
+  ] <?> "type atom"
 
 pArrowType = do
   spaces
@@ -270,6 +315,8 @@ laneReserved =
   , resFat
   , resSemi
   , resComma
+  , resDot 
+  , resStruct
   ]
 
 resArrow = "->"
@@ -303,6 +350,8 @@ resTyping = ":"
 resFat = "=>"
 resSemi = ";"
 resComma = ","
+resDot = "."
+resStruct = "struct"
 
 opTable =
   [ [Infix (pOp [resEq, resNeq, resLt, resGt, resLeq, resGeq]) AssocLeft]
@@ -310,17 +359,17 @@ opTable =
   , [Infix (pOp [resAdd, resSub]) AssocLeft]
   ]
 
--- examples =
---   [ ("def main => x + y / z"
---   , [RTLExp
---       (TypedName "main" Nothing)
---       (REBin
---         resAdd
---         (REId "x")
---         (REBin resDiv (REId "y") (REId "z")))])
---   ]
+examples =
+  [ ("def main => x + y / z"
+  , [RTLExp
+      (TypedName "main" Nothing)
+      (REBin
+        resAdd
+        (REId "x")
+        (REBin resDiv (REId "y") (REId "z")))])
+  ]
 
--- checkExamples = map (\(s, r) -> (s, parseLaneProg s == Right (RProg r))) examples
+checkExamples = map (\(s, r) -> (s, parseLaneProg s == Right (RProg r))) examples
 
--- showExamples = mapM_ pretty checkExamples where
-  -- pretty (s, r) = putStrLn (if r then "pass" else "fail: " ++ s)
+showExamples = mapM_ pretty checkExamples where
+  pretty (s, r) = putStrLn (if r then "pass" else "fail: " ++ s)

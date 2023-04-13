@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use record patterns" #-}
-module Val where 
+module Val (LVal(..), LBif, VEnv) where 
 
 import AST 
 import Err 
@@ -13,6 +13,16 @@ data LVal =
   | LValString String
   | LValLam String LExpr VEnv 
   | LValBif LBif 
+  | LValStruct String [(String, LVal)]
+
+instance Show LVal where 
+  show (LValBool b) = show b 
+  show (LValInt i) = show i 
+  show LValUnit = "()" 
+  show (LValString s) = show s 
+  show (LValLam _ _ _) = "<lambda>" 
+  show (LValBif _) = "<builtin>" 
+  show (LValStruct s fields) = "struct " ++ s ++ " {" ++ unwords (map (\(f, v) -> f ++ " = " ++ show v) fields) ++ "}"
 
 type VEnv = Env String LVal
 

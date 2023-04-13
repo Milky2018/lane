@@ -8,4 +8,4 @@ def even (n : Int) : Bool =
     then true 
     else odd (n - 1)
     
-def main : Bool = odd 5
+def main = odd 5

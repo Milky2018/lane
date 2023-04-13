@@ -16,16 +16,18 @@ data FinalVal =
   | FinalUnit
   | FinalString String
   | FinalErr String
+  | FinalStruct String [(String, LVal)]
   deriving (Show, Eq)
 
 createInitialEnv :: LProg -> VEnv -> VEnv
 createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
   where
-    addDef env stmt@(TLExp name _ expr) = extendEnv name (evalTopLevelDef newEnv stmt) env
+    addDef env stmt@(TLExp name _ expr) = extendEnv name (evalTopLevelExpr newEnv expr) env
+    -- addDef env stmt@(TLStruct _ _) = env 
     newEnv = createInitialEnv (Prog defs) oldEnv
-
-evalTopLevelDef :: VEnv -> LTLStmt -> LVal
-evalTopLevelDef env (TLExp _ () expr) = case eval expr env of
+    
+evalTopLevelExpr :: VEnv -> LExpr -> LVal
+evalTopLevelExpr env expr = case eval expr env of
   Right value -> value
   Left err    -> error $ "evalTopLevelDef: " ++ reportErr err
 
@@ -38,6 +40,7 @@ runProg prog = -- add builtins
       Right (LValInt i) -> FinalInt i
       Right LValUnit -> FinalUnit
       Right (LValString s) -> FinalString s
+      Right (LValStruct s fields) -> FinalStruct s fields
       Right (LValLam _ _ _) -> FinalErr "lambda as main expression"
       Right (LValBif _) -> FinalErr "builtin function as main expression"
 
@@ -66,3 +69,15 @@ eval (EIf cond b1 b2) env = do
   case v1 of
     LValBool b -> if b then eval b1 env else eval b2 env
     _ -> Left (LBug "not a boolean")
+-- eval (EStruct name fields) env = do
+--   fields' <- mapM (\(id', expr) -> do
+--     v <- eval expr env
+--     return (id', v)) fields
+--   return $ LValStruct name fields'
+eval (EAccess e field) env = 
+  case eval e env of 
+    Right (LValStruct _ fields) -> case lookup field fields of 
+      Just v -> return v 
+      Nothing -> Left $ LBug $ "field " ++ field ++ " not found"
+    Right _ -> Left $ LBug "not a struct"
+    Left err -> Left err

@@ -5,6 +5,7 @@ newtype Prog t = Prog [TLStmt t] deriving (Show, Eq)
 
 data TLStmt t 
   = TLExp String t (Expr t) 
+  -- \| TLStruct String [(String, t)] 
   deriving (Show, Eq)
 
 data Expr t = 
@@ -16,6 +17,8 @@ data Expr t =
   | EApp (Expr t) (Expr t)
   | ELam String t (Expr t) t
   | EIf (Expr t) (Expr t) (Expr t)
+  | EAccess (Expr t) String
+  -- \| EStruct String [(String, Expr t)]
   deriving (Eq, Show)
 
 type LProg = Prog ()
@@ -36,6 +39,7 @@ prettyProg (Prog stmts) = unlines $ map prettyStmt stmts
 
 prettyStmt :: Pretty t => TLStmt t -> String
 prettyStmt (TLExp name _ body) = name ++ " = " ++ prettyExpr body
+-- prettyStmt (TLStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
 
 prettyExpr :: Pretty t => Expr t -> String 
 prettyExpr (EBool b) = show b 
@@ -46,3 +50,5 @@ prettyExpr (EInt i) = show i
 prettyExpr (EApp e1 e2) = "(" ++ prettyExpr e1 ++ " " ++ prettyExpr e2 ++ ")"
 prettyExpr (ELam arg argT body _) = "(\\" ++ "(" ++ arg ++ " : " ++ pretty argT ++ ") -> " ++ prettyExpr body ++ ")"
 prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"
+prettyExpr (EAccess e field) = prettyExpr e ++ "." ++ field
+-- prettyExpr (EStruct name fields) = name ++ " {" ++ unwords (map (\(f, e) -> f ++ " = " ++ prettyExpr e) fields) ++ "}"
