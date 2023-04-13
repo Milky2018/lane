@@ -310,19 +310,17 @@ opTable =
   , [Infix (pOp [resAdd, resSub]) AssocLeft]
   ]
 
-examples =
-  [ ("def main => x + y / z"
-  , [RTLExp
-      (TypedName "main" Nothing)
-      (REBin
-        resAdd
-        (REId "x")
-        (REBin resDiv (REId "y") (REId "z")))])
-  ]
+-- examples =
+--   [ ("def main => x + y / z"
+--   , [RTLExp
+--       (TypedName "main" Nothing)
+--       (REBin
+--         resAdd
+--         (REId "x")
+--         (REBin resDiv (REId "y") (REId "z")))])
+--   ]
 
-checkExamples = map (\(s, r) -> (s, parseLaneProg s == Right (RProg r))) examples
+-- checkExamples = map (\(s, r) -> (s, parseLaneProg s == Right (RProg r))) examples
 
-showExamples = mapM_ pretty checkExamples where
-  pretty (s, r) = putStrLn (if r then "pass" else "fail: " ++ s)
-
-
+-- showExamples = mapM_ pretty checkExamples where
+  -- pretty (s, r) = putStrLn (if r then "pass" else "fail: " ++ s)

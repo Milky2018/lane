@@ -1,5 +1,5 @@
 name:                Lane
-version:             0.1.0.1
+version:             0.1.2
 github:              "githubuser/Lane"
 license:             BSD3
 author:              "Author name here"
@@ -61,3 +61,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - Lane
+    - hspec

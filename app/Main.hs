@@ -1,9 +1,8 @@
 module Main (main) where
 
 import System.Environment (getArgs)
-import System.IO (readFile)
 
-import Lib (lanei)
+import Interpreter (lanei)
 
 main :: IO ()
 main = do
