@@ -1,31 +1,27 @@
-module Builtins (NamedBif (..), addBuiltins, addTBuiltins) where
+module Builtins (NamedBi (..), addBuiltins, addTBuiltins) where
 
-import Val ( LBif, VEnv, LVal(LValInt, LValBif, LValBool) )
+import Val ( VEnv, LVal(..) )
 import AST ()
-import Err ( LResult, LErr(LErr) )
+import Err ( LErr(LErr) )
 import Env ( extendEnv )
 import Ty ( LType(..) )
 import TAST ( TEnv )
 
-data NamedBif = NamedBif {
-    getName :: String
-  , getTy :: LType
-  , getBif :: LBif
-}
+data NamedBi = NamedBi String LType LVal 
 
-addBuiltin :: NamedBif -> VEnv -> VEnv
-addBuiltin (NamedBif name _ bif) = extendEnv name (LValBif bif)
+addBuiltin :: NamedBi -> VEnv -> VEnv
+addBuiltin (NamedBi name _ bi) = extendEnv name bi
 
 addBuiltins :: VEnv -> VEnv
 addBuiltins env = foldr addBuiltin env builtins
 
-addTBuiltin :: NamedBif -> TAST.TEnv -> TAST.TEnv
-addTBuiltin (NamedBif name ty _) = extendEnv name ty
+addTBuiltin :: NamedBi -> TAST.TEnv -> TAST.TEnv
+addTBuiltin (NamedBi name ty _) = extendEnv name ty
 
 addTBuiltins :: TAST.TEnv -> TAST.TEnv
 addTBuiltins env = foldr addTBuiltin env builtins
 
-builtins :: [NamedBif]
+builtins :: [NamedBi]
 builtins =
   [ makeBifFromBinOp "+" ((+) :: Int -> Int -> Int)
   , makeBifFromBinOp "-" ((-) :: Int -> Int -> Int)
@@ -38,6 +34,9 @@ builtins =
   -- TODO: support Eq a => a -> a -> Bool 
   , makeBifFromBinOp "==" ((==) :: Int -> Int -> Bool)
   , makeBifFromBinOp "!=" ((/=) :: Int -> Int -> Bool)
+  , NamedBi "true" LTBool (LValBool True)
+  , NamedBi "false" LTBool (LValBool False)
+  , NamedBi "unit" LTUnit LValUnit
   ]
 
 class CorrespondLValCons a where
@@ -56,13 +55,15 @@ instance CorrespondLValCons Bool where
   corresback (LValBool b) = Just b
   corresback _ = Nothing
 
-makeBifFromBinOp :: forall a b c. (CorrespondLValCons a, CorrespondLValCons b, CorrespondLValCons c) => String -> (a -> b -> c) -> NamedBif
+makeBifFromBinOp :: forall a b c. 
+                    (CorrespondLValCons a, CorrespondLValCons b, CorrespondLValCons c) => 
+                    String -> (a -> b -> c) -> NamedBi
 makeBifFromBinOp name op = 
   let (_aV, aTy) = correspond @a
       (_bV, bTy) = correspond @b 
       (cV, cTy) = correspond
-  in NamedBif name (LTLam aTy (LTLam bTy cTy)) $
-    (\p -> Right . LValBif . p) $
+  in NamedBi name (LTLam aTy (LTLam bTy cTy)) $
+    LValBif $ (\p -> Right . LValBif . p) $
       \a' b' -> case (corresback a', corresback b') of
         (Just a'', Just b'') -> Right $ cV $ op a'' b''
         _ -> Left $ LErr $ name ++ " type error." ++ expected ++ actual

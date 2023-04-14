@@ -8,10 +8,8 @@ data TLStmt t
   -- \| TLStruct String [(String, t)] 
   deriving (Show, Eq)
 
-data Expr t = 
-    EBool Bool 
-  | EInt Int 
-  | EUnit
+data Expr t =  
+    EInt Int 
   | EString String
   | EId String
   | EApp (Expr t) (Expr t)
@@ -42,9 +40,7 @@ prettyStmt (TLExp name _ body) = name ++ " = " ++ prettyExpr body
 -- prettyStmt (TLStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
 
 prettyExpr :: Pretty t => Expr t -> String 
-prettyExpr (EBool b) = show b 
 prettyExpr (EId i) = i 
-prettyExpr EUnit = "()" 
 prettyExpr (EString s) = show s
 prettyExpr (EInt i) = show i
 prettyExpr (EApp e1 e2) = "(" ++ prettyExpr e1 ++ " " ++ prettyExpr e2 ++ ")"

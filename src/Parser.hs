@@ -117,8 +117,6 @@ atom = choice [
       try pLet
     , try pIf
     , try pLam
-    , try pUnit
-    , try pBool
     -- , try pStructCons 
     , pInt
     , pString
@@ -138,11 +136,6 @@ spacef = spaces
          >> return (REBin resSpace)
 
 pApp = buildExpressionParser [[Infix spacef AssocLeft]] pExpr''
-
-pUnit = string resUnit >> return REUnit
-
-pBool = (string resTrue >> return (REBool True))
-    <|> (string resFalse >> return (REBool False))
 
 pAccess = do
   e <- pExpr'''
@@ -303,9 +296,6 @@ laneReserved =
   , resElse
   , resLam
   , resDef
-  , resTrue
-  , resFalse
-  , resUnit
   , resSpace
   , resTBool
   , resTUnit
@@ -338,9 +328,6 @@ resThen = "then"
 resElse = "else"
 resLam = "fun"
 resDef = "def"
-resTrue = "true"
-resFalse = "false"
-resUnit = "unit"
 resSpace = " "
 resTBool = "Bool"
 resTUnit = "Unit"

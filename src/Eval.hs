@@ -4,7 +4,7 @@
 module Eval (runProg, FinalVal (..)) where
 
 import AST
-    ( LExpr, Expr(..), LProg, Prog (..), LTLStmt, TLStmt (..) )
+    ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..) )
 import Err ( LResult, LErr(LBug), reportErr )
 import Val ( VEnv, LVal(..) )
 import Builtins ( addBuiltins )
@@ -45,9 +45,7 @@ runProg prog = -- add builtins
       Right (LValBif _) -> FinalErr "builtin function as main expression"
 
 eval :: LExpr -> VEnv -> LResult LVal
-eval (EBool b) env = return $ LValBool b
 eval (EInt i) env = return $ LValInt i
-eval EUnit env = return LValUnit
 eval (EString s) env = return $ LValString s
 eval (EId s) env =
   case lookupEnv s env of

@@ -9,7 +9,7 @@ import TAST ( TEnv, MTProg, MTExpr, MTStmt )
 import Ty ( LType(..) )
 import Control.Monad (foldM)
 import Data.Maybe (fromMaybe)
-import qualified Data.Bifunctor
+-- import qualified Data.Bifunctor
 
 elimType :: MTProg -> LProg
 elimType (Prog stmts) = Prog $ map elimTypeStmt stmts
@@ -21,9 +21,7 @@ elimTypeStmt (TLExp name _ body) = TLExp name () (elimTypeExpr body)
 --     elimedFields = map (\(name, _ty) -> (name, ())) fields
 
 elimTypeExpr :: MTExpr -> LExpr
-elimTypeExpr (EBool b) = EBool b
 elimTypeExpr (EInt i) = EInt i
-elimTypeExpr EUnit = EUnit
 elimTypeExpr (EString s) = EString s
 elimTypeExpr (EId s) = EId s
 elimTypeExpr (EApp e1 e2) = EApp (elimTypeExpr e1) (elimTypeExpr e2)
@@ -64,15 +62,9 @@ tcStmt (TLExp name ty body) env = do
 
 -- TODO: type inference
 tc :: MTExpr -> Maybe LType -> TEnv -> LResult LType
-tc (EBool _) (Just LTBool) _ = return LTBool
-tc (EBool _) (Just t) _ = Left $ LTErr (EBool True) t LTBool
-tc (EBool _) Nothing _ = return LTBool
 tc (EInt _) (Just LTInt) _ = return LTInt
 tc (EInt n) (Just t) _ = Left $ LTErr (EInt n) t LTInt
 tc (EInt _) Nothing _ = return LTInt
-tc EUnit (Just LTUnit) _ = return LTUnit
-tc EUnit (Just t) _ = Left $ LTErr EUnit t LTUnit
-tc EUnit Nothing _ = return LTUnit
 tc (EString _) (Just LTString) _ = return LTString
 tc (EString s) (Just t) _ = Left $ LTErr (EString s) t LTString
 tc (EString _) Nothing _ = return LTString
@@ -130,4 +122,4 @@ tc (EIf e1 e2 e3) t env = do
     --             Nothing -> return t''
     --         Nothing -> Left $ LErr ("Field " ++ field ++ " not found in record")
     --     _ -> Left $ LTErr (EAccess e field) (LTStruct []) t'
-tc (EAccess e f) t env = tc e t env 
+tc (EAccess e _f) t env = tc e t env 

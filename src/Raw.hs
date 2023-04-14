@@ -5,7 +5,6 @@ import AST
   )
 import TAST (MTProg, MTStmt)
 import Ty (LType (..))
-import qualified Data.Bifunctor
 
 -- newtype RProg = RProg RExpr deriving (Show, Eq)
 newtype RProg = RProg [RTLStmt] deriving (Show, Eq)
@@ -17,9 +16,7 @@ data RTLStmt
   deriving (Show, Eq)
 
 data RExpr
-  = REBool Bool -- true | false
-  | REInt Int -- 1 | 2 | 3 | ...
-  | REUnit -- unit
+  = REInt Int -- 1 | 2 | 3 | ...
   | REString String -- ""
   | REId String -- id
   | RELet [(TypedName, RExpr)] RExpr -- let x1 : t1 = e1; x2 : t2 = e2 ... in expr
@@ -66,9 +63,7 @@ trans (RProg re) = Prog (map transTLStmt re)
       xs' <- combineTypes xs rt
       pure $ RTFunc x' xs'
 
-    transExpr (REBool b) = EBool b
     transExpr (REInt i) = EInt i
-    transExpr REUnit = EUnit
     transExpr (REString s) = EString s
     transExpr (REId i) = EId i
     -- let x1 : t1 = e1; x2 : t2 = e2 in expr
