@@ -20,7 +20,7 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/Lane#readme>
 
 dependencies:
-- base >= 4.7 && < 5
+- base 
 - containers
 - parsec
 - mtl
@@ -39,6 +39,11 @@ ghc-options:
 
 library:
   source-dirs: src
+  default-extensions: 
+  - TypeApplications
+  - RankNTypes
+  - AllowAmbiguousTypes
+  - ScopedTypeVariables
 
 executables:
   lane:

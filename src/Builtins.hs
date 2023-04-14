@@ -20,80 +20,52 @@ addBuiltins :: VEnv -> VEnv
 addBuiltins env = foldr addBuiltin env builtins
 
 addTBuiltin :: NamedBif -> TAST.TEnv -> TAST.TEnv
-addTBuiltin (NamedBif name ty _) = extendEnv name ty 
+addTBuiltin (NamedBif name ty _) = extendEnv name ty
 
 addTBuiltins :: TAST.TEnv -> TAST.TEnv
 addTBuiltins env = foldr addTBuiltin env builtins
 
 builtins :: [NamedBif]
-builtins = 
-  [ bifAdd
-  , bifSub
-  , bifMul
-  , bifDiv
-  , bifLt
-  , bifGt
-  , bifLeq 
-  , bifGeq 
-  , bifEq
-  , bifNeq
+builtins =
+  [ makeBifFromBinOp "+" ((+) :: Int -> Int -> Int)
+  , makeBifFromBinOp "-" ((-) :: Int -> Int -> Int)
+  , makeBifFromBinOp "*" ((*) :: Int -> Int -> Int)
+  , makeBifFromBinOp "/" (div :: Int -> Int -> Int)
+  , makeBifFromBinOp "<" ((<) :: Int -> Int -> Bool)
+  , makeBifFromBinOp ">" ((>) :: Int -> Int -> Bool)
+  , makeBifFromBinOp "<=" ((<=) :: Int -> Int -> Bool)
+  , makeBifFromBinOp ">=" ((>=) :: Int -> Int -> Bool)
+  -- TODO: support Eq a => a -> a -> Bool 
+  , makeBifFromBinOp "==" ((==) :: Int -> Int -> Bool)
+  , makeBifFromBinOp "!=" ((/=) :: Int -> Int -> Bool)
   ]
 
-makeBifFromOp :: (LVal -> LVal -> LResult LVal) -> LBif
-makeBifFromOp op = Right . LValBif . op
+class CorrespondLValCons a where
+  correspond :: (a -> LVal, LType)
+  corresback :: LVal -> Maybe a
 
-iiiType :: LType
-iiiType = LTLam LTInt (LTLam LTInt LTInt)
+instance CorrespondLValCons Int where
+  correspond = (LValInt, LTInt)
 
-bifAdd :: NamedBif
-bifAdd = NamedBif "+" iiiType $ makeBifFromOp add where
-  add (LValInt a) (LValInt b) = Right $ LValInt $ a + b
-  add _ _ = Left $ LErr "add: expected two integers"
+  corresback (LValInt i) = Just i
+  corresback _ = Nothing
 
-bifSub :: NamedBif
-bifSub = NamedBif "-" iiiType $ makeBifFromOp sub where
-  sub (LValInt a) (LValInt b) = Right $ LValInt $ a - b
-  sub _ _ = Left $ LErr "sub: expected two integers"
+instance CorrespondLValCons Bool where
+  correspond = (LValBool, LTBool)
 
-bifMul :: NamedBif
-bifMul = NamedBif "*" iiiType $ makeBifFromOp mul where
-  mul (LValInt a) (LValInt b) = Right $ LValInt $ a * b
-  mul _ _ = Left $ LErr "mul: expected two integers"
+  corresback (LValBool b) = Just b
+  corresback _ = Nothing
 
-bifDiv :: NamedBif
-bifDiv = NamedBif "/" iiiType $ makeBifFromOp div_ where
-  div_ (LValInt a) (LValInt b) = Right $ LValInt $ a `div` b
-  div_ _ _ = Left $ LErr "div: expected two integers"
-
-iibType :: LType 
-iibType = LTLam LTInt (LTLam LTInt LTBool)
-
-bifLt :: NamedBif
-bifLt = NamedBif "<" iibType $ makeBifFromOp add where
-  add (LValInt a) (LValInt b) = Right $ LValBool $ a < b 
-  add _ _ = Left $ LErr "lt: expected two integers"
-
-bifGt :: NamedBif
-bifGt = NamedBif ">" iibType $ makeBifFromOp add where
-  add (LValInt a) (LValInt b) = Right $ LValBool $ a > b 
-  add _ _ = Left $ LErr "gt: expected two integers"
-
-bifLeq :: NamedBif
-bifLeq = NamedBif "<=" iibType $ makeBifFromOp add where
-  add (LValInt a) (LValInt b) = Right $ LValBool $ a <= b 
-  add _ _ = Left $ LErr "leq: expected two integers"
-
-bifGeq :: NamedBif
-bifGeq = NamedBif ">=" iibType $ makeBifFromOp add where
-  add (LValInt a) (LValInt b) = Right $ LValBool $ a >= b 
-  add _ _ = Left $ LErr "geq: expected two integers"
-
-bifEq :: NamedBif
-bifEq = NamedBif "==" iibType $ makeBifFromOp add where
-  add (LValInt a) (LValInt b) = Right $ LValBool $ a == b 
-  add _ _ = Left $ LErr "eq: expected two integers"
-
-bifNeq :: NamedBif
-bifNeq = NamedBif "!=" iibType $ makeBifFromOp add where
-  add (LValInt a) (LValInt b) = Right $ LValBool $ a /= b 
-  add _ _ = Left $ LErr "neq: expected two integers"
+makeBifFromBinOp :: forall a b c. (CorrespondLValCons a, CorrespondLValCons b, CorrespondLValCons c) => String -> (a -> b -> c) -> NamedBif
+makeBifFromBinOp name op = 
+  let (_aV, aTy) = correspond @a
+      (_bV, bTy) = correspond @b 
+      (cV, cTy) = correspond
+  in NamedBif name (LTLam aTy (LTLam bTy cTy)) $
+    (\p -> Right . LValBif . p) $
+      \a' b' -> case (corresback a', corresback b') of
+        (Just a'', Just b'') -> Right $ cV $ op a'' b''
+        _ -> Left $ LErr $ name ++ " type error." ++ expected ++ actual
+          where
+            expected = " expected: " ++ show (aTy, bTy)
+            actual = " actual: " ++ show (a', b')
