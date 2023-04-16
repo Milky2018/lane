@@ -23,7 +23,7 @@ createInitialEnv :: LProg -> VEnv -> VEnv
 createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
   where
     addDef env stmt@(TLExp name _ expr) = extendEnv name (evalTopLevelExpr newEnv expr) env
-    -- addDef env stmt@(TLStruct _ _) = env 
+    addDef env stmt@(TLStruct _ _) = env 
     newEnv = createInitialEnv (Prog defs) oldEnv
     
 evalTopLevelExpr :: VEnv -> LExpr -> LVal
@@ -67,11 +67,11 @@ eval (EIf cond b1 b2) env = do
   case v1 of
     LValBool b -> if b then eval b1 env else eval b2 env
     _ -> Left (LBug "not a boolean")
--- eval (EStruct name fields) env = do
---   fields' <- mapM (\(id', expr) -> do
---     v <- eval expr env
---     return (id', v)) fields
---   return $ LValStruct name fields'
+eval (EStruct name fields) env = do
+  fields' <- mapM (\(id', expr) -> do
+    v <- eval expr env
+    return (id', v)) fields
+  return $ LValStruct name fields'
 eval (EAccess e field) env = 
   case eval e env of 
     Right (LValStruct _ fields) -> case lookup field fields of 

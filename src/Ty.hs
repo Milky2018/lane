@@ -1,5 +1,6 @@
-module Ty (LType (..), pretty) where
+module Ty (LType (..), pretty, UDT) where
 import Pretty (Pretty (pretty))
+import Env
 
 data LType = 
     LTInt 
@@ -8,8 +9,10 @@ data LType =
   | LTUnit 
   | LTLam LType LType
   | LTVar Int
-  | LTStruct String [(String, LType)]
+  | LTId String 
   deriving (Show, Eq) 
+
+type UDT = Env String [(String, LType)]
 
 instance Pretty LType where 
   pretty LTInt = "Int"
@@ -18,4 +21,5 @@ instance Pretty LType where
   pretty LTUnit = "()"
   pretty (LTLam t1 t2) = "(" ++ pretty t1 ++ " -> " ++ pretty t2 ++ ")"
   pretty (LTVar a) = "TVar" ++ show a
-  pretty (LTStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
+  pretty (LTId name) = name
+  -- pretty (LTStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"

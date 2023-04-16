@@ -1,1 +1,8 @@
-def main = "Tom"
+struct Person {
+    name : String,
+    age : Int
+}
+
+def main : String = 
+  let p : Person = Person { name = "Tom", age = 18 }
+  in p.name 

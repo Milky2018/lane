@@ -52,7 +52,7 @@ pTLStmt :: Parser RTLStmt
 pTLStmt = choice [
     try pTLExp
   , try pTLFunc
-  -- , try pTLStruct
+  , try pTLStruct
   ] <?> "top level statement"
 
 pTLExp :: Parser RTLStmt
@@ -88,14 +88,14 @@ pTLFunc = do
   return $ RTLFunc name args body t
 
 -- struct S { field1 : t1, field2 : t2, ... }
--- pTLStruct :: Parser RTLStmt 
--- pTLStruct = do 
---   _ <- string resStruct 
---   spaces 
---   structName <- identifier
---   spaces
---   fields <- Parser.braces (sepBy pTypedName (spaces *> string resComma *> spaces))
---   return $ RTLStruct structName fields
+pTLStruct :: Parser RTLStmt 
+pTLStruct = do 
+  _ <- string resStruct 
+  spaces 
+  structName <- identifier
+  spaces
+  fields <- Parser.braces (sepBy pTypedName (spaces *> string resComma *> spaces))
+  return $ RTLStruct structName fields
 
 pExpr :: Parser RExpr
 pExpr = expr <* spaces where
@@ -117,7 +117,7 @@ atom = choice [
       try pLet
     , try pIf
     , try pLam
-    -- , try pStructCons 
+    , try pStructCons 
     , pInt
     , pString
     , pId
@@ -148,11 +148,11 @@ pInt = do s <- getInput
             _ -> empty
 
 -- S { field1 = e1, field2 = e2, ... }
--- pStructCons = do 
---   structName <- identifier
---   spaces
---   fields <- Parser.braces (sepBy pField (spaces *> string resComma *> spaces))
---   return $ REStructCons structName fields
+pStructCons = do 
+  structName <- identifier
+  spaces
+  fields <- Parser.braces (sepBy pField (spaces *> string resComma *> spaces))
+  return $ REStructCons structName fields
 
 pField = do 
   fieldName <- identifier
@@ -198,7 +198,7 @@ pTypeAtom = choice
   , try $ string resTInt >> return RTInt
   , try $ string resTString >> return RTString
   , try $ string resTUnit >> return RTUnit
-  -- , try $ identifier >> return RTUserDefined
+  , identifier >>= \name -> return $ RTId name 
   ] <?> "type atom"
 
 pArrowType = do

@@ -5,7 +5,7 @@ newtype Prog t = Prog [TLStmt t] deriving (Show, Eq)
 
 data TLStmt t 
   = TLExp String t (Expr t) 
-  -- \| TLStruct String [(String, t)] 
+  | TLStruct String [(String, t)] 
   deriving (Show, Eq)
 
 data Expr t =  
@@ -16,7 +16,7 @@ data Expr t =
   | ELam String t (Expr t) t
   | EIf (Expr t) (Expr t) (Expr t)
   | EAccess (Expr t) String
-  -- \| EStruct String [(String, Expr t)]
+  | EStruct String [(String, Expr t)]
   deriving (Eq, Show)
 
 type LProg = Prog ()
@@ -37,7 +37,7 @@ prettyProg (Prog stmts) = unlines $ map prettyStmt stmts
 
 prettyStmt :: Pretty t => TLStmt t -> String
 prettyStmt (TLExp name _ body) = name ++ " = " ++ prettyExpr body
--- prettyStmt (TLStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
+prettyStmt (TLStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
 
 prettyExpr :: Pretty t => Expr t -> String 
 prettyExpr (EId i) = i 
