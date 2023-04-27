@@ -4,7 +4,7 @@
 module Eval (runProg, FinalVal (..)) where
 
 import AST
-    ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..) )
+    ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..), LTLStmt )
 import Err ( LResult, LErr(LBug), reportErr )
 import Val ( VEnv, LVal(..) )
 import Builtins ( addBuiltins )
@@ -32,7 +32,7 @@ evalTopLevelExpr env expr = case eval expr env of
   Left err    -> error $ "evalTopLevelDef: " ++ reportErr err
 
 runProg :: LProg -> FinalVal
-runProg prog = -- add builtins
+runProg prog = 
   let env = createInitialEnv prog (addBuiltins emptyEnv)
   in case eval (EId "main") env of
       Left err -> FinalErr $ reportErr err

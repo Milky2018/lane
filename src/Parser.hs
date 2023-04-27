@@ -59,7 +59,7 @@ pTLExp :: Parser RTLStmt
 pTLExp = do
   _ <- string resDef
   spaces
-  typedName <- pTypedName
+  typedName <- try pTypedName <|> pUntypedName
   spaces
   _ <- string resAssign
   spaces
@@ -207,17 +207,19 @@ pArrowType = do
   spaces
   return RTFunc
 
+pUntypedName :: Parser TypedName 
+pUntypedName = do 
+  id' <- Parser.identifier
+  return (TypedName id' Nothing)
+
 pTypedName :: Parser TypedName
 pTypedName = do
   id' <- Parser.identifier
+  spaces 
+  _ <- string resTyping
   spaces
-  (
-    do
-    _ <- string resTyping
-    spaces
-    ty <- pType
-    return (TypedName id' (Just ty))) <|>
-    return (TypedName id' Nothing)
+  ty <- pType
+  return (TypedName id' (Just ty))
 
 pLet = do
   _ <- string resLet
@@ -231,7 +233,7 @@ pLet = do
 
 pLetClause :: Parser (TypedName, RExpr)
 pLetClause = do
-  id' <- pTypedName
+  id' <- try pTypedName <|> pUntypedName
   spaces
   _ <- string resAssign
   spaces
@@ -347,7 +349,7 @@ opTable =
   ]
 
 examples =
-  [ ("def main => x + y / z"
+  [ ("def main = x + y / z"
   , [RTLExp
       (TypedName "main" Nothing)
       (REBin

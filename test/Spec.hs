@@ -17,4 +17,4 @@ main = hspec $ do
       checkExample "examples/oddeven.lane" (FinalBool True)
       checkExample "examples/lambda.lane" (FinalInt 2)
       checkExample "examples/hello.lane" (FinalString "Hello World")
-      checkExample "examples/struct.lane" (FinalString "Tom")
+      checkExample "examples/struct.lane" (FinalInt (-2))

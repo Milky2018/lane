@@ -63,7 +63,6 @@ tcStmt (TLExp _name ty body) env udt =
 tcStmt (TLStruct _struct _fields) _env _udt = Nothing
 
 -- TODO: type inference
--- TODO: make UDT Reader
 tc :: MTExpr -> Maybe LType -> TEnv -> UDT -> LResult LType
 tc (EInt _) (Just LTInt) _ _ = return LTInt
 tc (EInt n) (Just t) _ _ = Left $ LTErr (EInt n) t LTInt
