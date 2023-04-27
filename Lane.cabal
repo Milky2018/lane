@@ -27,6 +27,7 @@ library
   exposed-modules:
       AST
       Builtins
+      Builtintypes
       Env
       Err
       Eval

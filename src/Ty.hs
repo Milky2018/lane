@@ -7,12 +7,21 @@ data LType =
   | LTString 
   | LTBool 
   | LTUnit 
+  | LTStruct String [(String, LType)]
   | LTLam LType LType
-  | LTVar Int
   | LTId String 
   deriving (Show, Eq) 
 
-type UDT = Env String [(String, LType)]
+type UDT = Env String LType 
+
+data LTypeVal = 
+    TVInt 
+  | TVString
+  | TVBool
+  | TVUnit
+  | TVStruct String [(String, LTypeVal)]
+  | TVLam LTypeVal LTypeVal
+  deriving (Show, Eq)
 
 instance Pretty LType where 
   pretty LTInt = "Int"
@@ -20,6 +29,5 @@ instance Pretty LType where
   pretty LTBool = "Bool"
   pretty LTUnit = "()"
   pretty (LTLam t1 t2) = "(" ++ pretty t1 ++ " -> " ++ pretty t2 ++ ")"
-  pretty (LTVar a) = "TVar" ++ show a
   pretty (LTId name) = name
-  -- pretty (LTStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
+  pretty (LTStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"

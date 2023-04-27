@@ -40,7 +40,7 @@ initialTEnv (Prog defs) oldEnv oldUdt = foldl addDef (oldEnv, oldUdt) defs
         Left err -> error $ "Top level definitions need type annotaions" ++ reportErr err
     addDef (env, udt) (TLExp name (Just ty) _expr) = (extendEnv name ty env, udt)
     addDef (env, udt) (TLStruct struct fields) =
-        let fieldTypes = map (Data.Bifunctor.second
+        let fieldTypes = LTStruct struct $ map (Data.Bifunctor.second
               (fromMaybe (error "Struct fields need type annotations"))) fields
         in (env, extendEnv struct fieldTypes udt)
 
@@ -87,7 +87,7 @@ tc (EApp e1 e2) t env udt = do
       case t1 of
         LTLam t1' t1'' | t1' == t2 -> return t1''
         LTLam t1' _t1'' -> Left $ LTErr e2 t1' t2
-        _ -> Left $ LTErr (EApp e1 e2) t1 (LTLam t2 (LTVar 0))
+        t'' -> Left $ LTErr (EApp e1 e2) t2 t'' 
 tc (ELam x mt1 e mt2) Nothing env udt = do
   t1 <- case mt1 of
     Just t  -> return t
@@ -104,7 +104,10 @@ tc (ELam x mt1 e mt2) (Just (LTLam t1 t2)) env udt = do
     (Nothing, Nothing) -> eShouldType
     _ -> Left $ LTErr (ELam x mt1 e mt2) (LTLam t1 t2) (LTLam (fromMaybe t1 mt1) (fromMaybe t2 mt2))
   return (LTLam t1 t2)
-tc (ELam x mt1 e mt2) (Just t) _ _ = Left $ LTErr (ELam x mt1 e mt2) t (LTLam (fromMaybe (LTVar 0) mt1) (fromMaybe (LTVar 0) mt2))
+tc (ELam x mt1 e mt2) (Just t) _ _ = Left $ 
+  LTErr (ELam x mt1 e mt2) 
+        t 
+        (LTLam (fromMaybe (LTId "<unknown>") mt1) (fromMaybe (LTId "<unknown>") mt2))
 tc (EIf e1 e2 e3) t env udt = do
   _t1 <- tc e1 (Just LTBool) env udt
   t2 <- tc e2 t env udt
@@ -113,7 +116,7 @@ tc (EIf e1 e2 e3) t env udt = do
 tc (EStruct n fields) Nothing env udt =
   case lookupEnv n udt of 
     Nothing -> Left $ LErr $ "Unbound struct: " ++ n
-    Just userDefStruct -> 
+    Just (LTStruct _name userDefStruct) -> 
       if length userDefStruct /= length fields then Left $ LErr $ "Struct " ++ n ++ " has " ++ show (length userDefStruct) ++ " fields, but " ++ show (length fields) ++ " were given"
       else do 
         _fieldTypes <- mapM checkField userDefStruct
@@ -123,6 +126,7 @@ tc (EStruct n fields) Nothing env udt =
                 Just expr -> do 
                   t' <- tc expr (Just t) env udt
                   if t == t' then return (field, t) else Left $ LTErr expr t t'
+    Just t -> Left $ LTErr (EStruct n fields) (LTStruct n []) t
 tc (EStruct n fields) (Just should) env udt = 
   if should == LTId n 
   then tc (EStruct n fields) Nothing env udt 
@@ -131,11 +135,12 @@ tc (EAccess expr field) should env udt = do
   t <- tc expr Nothing env udt
   case t of
     LTId i -> case lookupEnv i udt of
-      Just fields -> case lookup field fields of
+      Just (LTStruct _name fields) -> case lookup field fields of
         Just t' -> case should of
           Just t'' | t'' == t' -> return t'
           Just t'' -> Left $ LTErr (EAccess expr field) t'' t'
           Nothing -> return t'
         Nothing -> Left $ LErr ("Field " ++ field ++ " not found in record")
+      Just t' -> Left $ LTErr (EAccess expr field) (LTStruct "<struct>" []) t'
       Nothing -> Left $ LErr ("Unbound type: " ++ i)
     _ -> Left $ LTErr (EAccess expr field) (LTId "<struct>") t

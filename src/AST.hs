@@ -47,4 +47,4 @@ prettyExpr (EApp e1 e2) = "(" ++ prettyExpr e1 ++ " " ++ prettyExpr e2 ++ ")"
 prettyExpr (ELam arg argT body _) = "(\\" ++ "(" ++ arg ++ " : " ++ pretty argT ++ ") -> " ++ prettyExpr body ++ ")"
 prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"
 prettyExpr (EAccess e field) = prettyExpr e ++ "." ++ field
--- prettyExpr (EStruct name fields) = name ++ " {" ++ unwords (map (\(f, e) -> f ++ " = " ++ prettyExpr e) fields) ++ "}"
+prettyExpr (EStruct name fields) = name ++ " {" ++ unwords (map (\(f, e) -> f ++ " = " ++ prettyExpr e) fields) ++ "}"

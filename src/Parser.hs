@@ -186,7 +186,6 @@ pId = REId <$> Parser.identifier
 pType :: Parser RType
 pType = ty <* spaces where
   ty = try (buildExpressionParser [[Infix pArrowType AssocRight]] pType')
-    <|> pTypeAtom
     <?> "type"
 
 pType' :: Parser RType
