@@ -4,11 +4,12 @@ module TC (typeCheck, elimType) where
 import AST ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..), LTLStmt )
 import Builtins ( addTBuiltins )
 import Env ( emptyEnv, lookupEnv, extendEnv )
-import Err ( LResult, LErr(..), reportErr )
+import Err ( LResult, LErr(..) )
 import TAST ( TEnv, MTProg, MTExpr, MTStmt )
 import Ty ( LType(..), UDT )
 import Data.Maybe (fromMaybe, fromJust)
 import qualified Data.Bifunctor
+import Data.Foldable (foldlM)
 -- import qualified Data.Bifunctor
 
 elimType :: MTProg -> LProg
@@ -31,23 +32,23 @@ elimTypeExpr (EIf e1 e2 e3) = EIf (elimTypeExpr e1) (elimTypeExpr e2) (elimTypeE
 elimTypeExpr (EAccess e field) = EAccess (elimTypeExpr e) field
 elimTypeExpr (EStruct name fields) = EStruct name (map (Data.Bifunctor.second elimTypeExpr) fields)
 
-initialTEnv :: MTProg -> TEnv -> UDT -> (TEnv, UDT)
-initialTEnv (Prog defs) oldEnv oldUdt = foldl addDef (oldEnv, oldUdt) defs
+initialTEnv :: MTProg -> TEnv -> UDT -> LResult (TEnv, UDT)
+initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
   where
-    addDef :: (TEnv, UDT) -> MTStmt -> (TEnv, UDT)
-    addDef (env, udt) (TLExp name Nothing expr) = case tc expr Nothing env udt of
-        Right ty -> (extendEnv name ty env, udt)
-        Left err -> error $ "Top level definitions need type annotaions" ++ reportErr err
-    addDef (env, udt) (TLExp name (Just ty) _expr) = (extendEnv name ty env, udt)
-    addDef (env, udt) (TLStruct struct fields) =
-        let fieldTypes = LTStruct struct $ map (Data.Bifunctor.second
-              (fromMaybe (error "Struct fields need type annotations"))) fields
-        in (env, extendEnv struct fieldTypes udt)
+    addDef :: (TEnv, UDT) -> MTStmt -> LResult (TEnv, UDT)
+    addDef (env, udt) (TLExp name (Just ty) _expr) = Right (extendEnv name ty env, udt)
+    addDef _ (TLExp name Nothing _expr) = Left $ LErr $ "Top level definition " ++ name ++ " needs type annotaions"
+    addDef (env, udt) (TLStruct struct fields) = do 
+      fieldTypes <- mapM (\(name, ty) -> case ty of
+        Just ty' -> Right (name, ty')
+        Nothing -> Left $ LErr "Struct fields need type annotations") fields
+      return (env, extendEnv struct (LTStruct struct fieldTypes) udt)
 
 typeCheck :: MTProg -> Maybe LErr
-typeCheck prog@(Prog stmts) =
-  let (tenv, udts) = initialTEnv prog (addTBuiltins emptyEnv) emptyEnv
-  in tcStmts stmts tenv udts
+typeCheck prog@(Prog stmts) = 
+  case initialTEnv prog (addTBuiltins emptyEnv) emptyEnv of 
+    Right (tenv, udt) -> tcStmts stmts tenv udt
+    Left err -> Just err
 
 tcStmts :: [MTStmt] -> TEnv -> UDT -> Maybe LErr
 tcStmts ss env udt = let errors = map (\stmt -> tcStmt stmt env udt) ss in
@@ -62,20 +63,24 @@ tcStmt (TLExp _name ty body) env udt =
     Left err -> Just err
 tcStmt (TLStruct _struct _fields) _env _udt = Nothing
 
--- TODO: type inference
+-- This type checker uses a simple bidirectional algorithm
+-- tc :: expr -> expected type -> type env -> udt -> result 
 tc :: MTExpr -> Maybe LType -> TEnv -> UDT -> LResult LType
 tc (EInt _) (Just LTInt) _ _ = return LTInt
 tc (EInt n) (Just t) _ _ = Left $ LTErr (EInt n) t LTInt
 tc (EInt _) Nothing _ _ = return LTInt
+
 tc (EString _) (Just LTString) _ _ = return LTString
 tc (EString s) (Just t) _ _ = Left $ LTErr (EString s) t LTString
 tc (EString _) Nothing _ _ = return LTString
+
 tc (EId x) t env _ = case lookupEnv x env of
   Just t' -> case t of
     Just t'' | t'' == t' -> return t'
     Just t'' -> Left $ LTErr (EId x) t'' t'
     Nothing -> return t'
   Nothing -> Left $ LErr ("Unbound variable: " ++ x)
+
 tc (EApp e1 e2) t env udt = do
   t2 <- tc e2 Nothing env udt
   case t of
@@ -88,6 +93,7 @@ tc (EApp e1 e2) t env udt = do
         LTLam t1' t1'' | t1' == t2 -> return t1''
         LTLam t1' _t1'' -> Left $ LTErr e2 t1' t2
         t'' -> Left $ LTErr (EApp e1 e2) t2 t'' 
+
 tc (ELam x mt1 e mt2) Nothing env udt = do
   t1 <- case mt1 of
     Just t  -> return t
@@ -108,11 +114,13 @@ tc (ELam x mt1 e mt2) (Just t) _ _ = Left $
   LTErr (ELam x mt1 e mt2) 
         t 
         (LTLam (fromMaybe (LTId "<unknown>") mt1) (fromMaybe (LTId "<unknown>") mt2))
+
 tc (EIf e1 e2 e3) t env udt = do
   _t1 <- tc e1 (Just LTBool) env udt
   t2 <- tc e2 t env udt
   t3 <- tc e3 t env udt
   if t2 == t3 then return t2 else Left $ LTErr (EIf e1 e2 e3) t2 t3
+
 tc (EStruct n fields) Nothing env udt =
   case lookupEnv n udt of 
     Nothing -> Left $ LErr $ "Unbound struct: " ++ n
@@ -131,6 +139,7 @@ tc (EStruct n fields) (Just should) env udt =
   if should == LTId n 
   then tc (EStruct n fields) Nothing env udt 
   else Left $ LTErr (EStruct n fields) should (LTId n)
+
 tc (EAccess expr field) should env udt = do
   t <- tc expr Nothing env udt
   case t of

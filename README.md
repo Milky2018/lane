@@ -5,4 +5,3 @@
 * Algebraic data types
 * Generic types 
 * IO
-* Type inference

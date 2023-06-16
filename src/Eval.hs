@@ -4,7 +4,7 @@
 module Eval (runProg, FinalVal (..)) where
 
 import AST
-    ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..), LTLStmt )
+    ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..) )
 import Err ( LResult, LErr(LBug), reportErr )
 import Val ( VEnv, LVal(..) )
 import Builtins ( addBuiltins )

@@ -1,5 +1,5 @@
 def f (x : Int) : Int = x + 1 
 
-def id (k : Int -> Int) : Int -> Int = fun p = k p 
+def id (k : Int -> Int) (p : Int) : Int = k p 
 
 def main : Int = id f 1

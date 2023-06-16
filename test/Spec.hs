@@ -18,3 +18,4 @@ main = hspec $ do
       checkExample "examples/lambda.lane" (FinalInt 2)
       checkExample "examples/hello.lane" (FinalString "Hello World")
       checkExample "examples/struct.lane" (FinalInt (-2))
+      checkExample "examples/moreargs.lane" (FinalInt 2)
