@@ -1,5 +1,6 @@
 module AST (Expr (..), LExpr, TLStmt (..), Prog (..), LTLStmt, LProg) where 
 import Pretty (Pretty (pretty))
+import Data.List (intercalate)
 
 newtype Prog t = Prog [TLStmt t] deriving (Show, Eq)
 
@@ -37,7 +38,7 @@ prettyProg (Prog stmts) = unlines $ map prettyStmt stmts
 
 prettyStmt :: Pretty t => TLStmt t -> String
 prettyStmt (TLExp name _ body) = name ++ " = " ++ prettyExpr body
-prettyStmt (TLStruct name fields) = "struct " ++ name ++ " {" ++ unwords (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
+prettyStmt (TLStruct name fields) = "struct " ++ name ++ " {" ++ intercalate ", " (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
 
 prettyExpr :: Pretty t => Expr t -> String 
 prettyExpr (EId i) = i 
@@ -47,4 +48,4 @@ prettyExpr (EApp e1 e2) = "(" ++ prettyExpr e1 ++ " " ++ prettyExpr e2 ++ ")"
 prettyExpr (ELam arg argT body _) = "(\\" ++ "(" ++ arg ++ " : " ++ pretty argT ++ ") -> " ++ prettyExpr body ++ ")"
 prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"
 prettyExpr (EAccess e field) = prettyExpr e ++ "." ++ field
-prettyExpr (EStruct name fields) = name ++ " {" ++ unwords (map (\(f, e) -> f ++ " = " ++ prettyExpr e) fields) ++ "}"
+prettyExpr (EStruct name fields) = name ++ " {" ++ intercalate ", " (map (\(f, e) -> f ++ " = " ++ prettyExpr e) fields) ++ "}"

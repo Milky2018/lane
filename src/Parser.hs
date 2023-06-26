@@ -192,13 +192,14 @@ pType' :: Parser RType
 pType' = ty <* spaces where
   ty = Parser.parens pType <|> pTypeAtom <?> "type"
 
-pTypeAtom = choice
-  [ try $ string resTBool >> return RTBool
-  , try $ string resTInt >> return RTInt
-  , try $ string resTString >> return RTString
-  , try $ string resTUnit >> return RTUnit
-  , identifier >>= \name -> return $ RTId name 
-  ] <?> "type atom"
+-- pTypeAtom = choice
+--   [ try $ string resTBool >> return RTBool
+--   , try $ string resTInt >> return RTInt
+--   , try $ string resTString >> return RTString
+--   , try $ string resTUnit >> return RTUnit
+--   , identifier >>= \name -> return $ RTId name 
+--   ] <?> "type atom"
+pTypeAtom = (identifier >>= \name -> return $ RTId name) <?> "type atom"
 
 pArrowType = do
   spaces
@@ -298,10 +299,10 @@ laneReserved =
   , resLam
   , resDef
   , resSpace
-  , resTBool
-  , resTUnit
-  , resTInt
-  , resTString
+  -- , resTBool
+  -- , resTUnit
+  -- , resTInt
+  -- , resTString
   , resTyping
   , resFat
   , resSemi
@@ -330,10 +331,10 @@ resElse = "else"
 resLam = "fun"
 resDef = "def"
 resSpace = " "
-resTBool = "Bool"
-resTUnit = "Unit"
-resTInt = "Int"
-resTString = "String"
+-- resTBool = "Bool"
+-- resTUnit = "Unit"
+-- resTInt = "Int"
+-- resTString = "String"
 resTyping = ":"
 resFat = "=>"
 resSemi = ";"

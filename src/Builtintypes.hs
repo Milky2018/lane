@@ -1,13 +1,13 @@
 module Builtintypes (addBuiltinTypes) where
-import Ty (UDT, LType (..))
+import Ty (UDT, LTypeVal (..))
 import Env (extendEnv)
 
-builtinTypes :: [(String, LType)]
+builtinTypes :: [(String, LTypeVal)]
 builtinTypes = [
-    ("Bool", LTBool)
-  , ("Int", LTInt)
-  , ("String", LTString)
-  , ("Unit", LTUnit)
+    ("Bool", TVBool)
+  , ("Int", TVInt)
+  , ("String", TVString)
+  , ("Unit", TVUnit)
   ]
 
 addBuiltinTypes :: UDT -> UDT

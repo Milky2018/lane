@@ -4,10 +4,10 @@ import Val ( VEnv, LVal(..) )
 import AST ()
 import Err ( LErr(LErr) )
 import Env ( extendEnv )
-import Ty ( LType(..) )
-import TAST ( TEnv )
+import Ty ( LTypeVal (..) )
+import TAST ( TVEnv )
 
-data NamedBi = NamedBi String LType LVal 
+data NamedBi = NamedBi String LTypeVal LVal 
 
 addBuiltin :: NamedBi -> VEnv -> VEnv
 addBuiltin (NamedBi name _ bi) = extendEnv name bi
@@ -15,10 +15,10 @@ addBuiltin (NamedBi name _ bi) = extendEnv name bi
 addBuiltins :: VEnv -> VEnv
 addBuiltins env = foldr addBuiltin env builtins
 
-addTBuiltin :: NamedBi -> TAST.TEnv -> TAST.TEnv
+addTBuiltin :: NamedBi -> TAST.TVEnv -> TAST.TVEnv
 addTBuiltin (NamedBi name ty _) = extendEnv name ty
 
-addTBuiltins :: TAST.TEnv -> TAST.TEnv
+addTBuiltins :: TAST.TVEnv -> TAST.TVEnv
 addTBuiltins env = foldr addTBuiltin env builtins
 
 builtins :: [NamedBi]
@@ -34,23 +34,23 @@ builtins =
   -- TODO: support Eq a => a -> a -> Bool 
   , makeBifFromBinOp "==" ((==) :: Int -> Int -> Bool)
   , makeBifFromBinOp "!=" ((/=) :: Int -> Int -> Bool)
-  , NamedBi "true" LTBool (LValBool True)
-  , NamedBi "false" LTBool (LValBool False)
-  , NamedBi "unit" LTUnit LValUnit
+  , NamedBi "true" TVBool (LValBool True)
+  , NamedBi "false" TVBool (LValBool False)
+  , NamedBi "unit" TVUnit LValUnit
   ]
 
 class CorrespondLValCons a where
-  correspond :: (a -> LVal, LType)
+  correspond :: (a -> LVal, LTypeVal)
   corresback :: LVal -> Maybe a
 
 instance CorrespondLValCons Int where
-  correspond = (LValInt, LTInt)
+  correspond = (LValInt, TVInt)
 
   corresback (LValInt i) = Just i
   corresback _ = Nothing
 
 instance CorrespondLValCons Bool where
-  correspond = (LValBool, LTBool)
+  correspond = (LValBool, TVBool)
 
   corresback (LValBool b) = Just b
   corresback _ = Nothing
@@ -62,7 +62,7 @@ makeBifFromBinOp name op =
   let (_aV, aTy) = correspond @a
       (_bV, bTy) = correspond @b 
       (cV, cTy) = correspond
-  in NamedBi name (LTLam aTy (LTLam bTy cTy)) $
+  in NamedBi name (TVLam aTy (TVLam bTy cTy)) $
     LValBif $ (\p -> Right . LValBif . p) $
       \a' b' -> case (corresback a', corresback b') of
         (Just a'', Just b'') -> Right $ cV $ op a'' b''

@@ -38,6 +38,7 @@ library
       TAST
       TC
       Ty
+      Udt
       Val
   other-modules:
       Paths_Lane

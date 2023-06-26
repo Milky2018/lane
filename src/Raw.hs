@@ -29,11 +29,7 @@ data RExpr
   deriving (Show, Eq)
 
 data RType
-  = RTBool
-  | RTUnit
-  | RTInt
-  | RTString
-  | RTFunc RType RType
+  = RTFunc RType RType
   | RTId String 
   deriving (Show, Eq)
 
@@ -86,9 +82,5 @@ trans (RProg re) = Prog (map transTLStmt re)
     transExpr (REAccess e field) = EAccess (transExpr e) field
     transExpr (REStructCons name fields) = EStruct name (map (Data.Bifunctor.second transExpr) fields)
 
-    transType RTBool = LTBool
-    transType RTUnit = LTUnit
-    transType RTInt = LTInt
-    transType RTString = LTString
     transType (RTFunc t1 t2) = LTLam (transType t1) (transType t2)
     transType (RTId i) = LTId i
