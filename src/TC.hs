@@ -12,6 +12,7 @@ import Data.Maybe (fromMaybe, fromJust)
 import qualified Data.Bifunctor
 import Builtintypes (addBuiltinTypes)
 import Udt (initialTEnv)
+import Pretty (pretty)
 -- import qualified Data.Bifunctor
 
 elimType :: MTProg -> LProg
@@ -106,11 +107,8 @@ tc (ELam x mt1 e mt2) (Just (TVLam t1 t2)) env = do
   return (TVLam t1 t2)
 tc (ELam _x _mt1 _e _mt2) (Just t) _ = Left $
   LErr $ "Expect a function type, but got" ++ show t
-  -- LTErr (ELam x mt1 e mt2) 
-  --       t 
-  --       (TVLam (fromMaybe (LTId "<unknown>") mt1) (fromMaybe (LTId "<unknown>") mt2))
 
-tc (EFix f mt1 e mt2) Nothing env = 
+tc fix@(EFix f mt1 e mt2) Nothing env = 
   case (mt1, mt2) of 
     (Just t1, Just t2) | t1 == t2 -> return t1
     (Just t1, Just t2) -> Left $ LTErr (EFix f mt1 e mt2) t1 t2
@@ -118,7 +116,7 @@ tc (EFix f mt1 e mt2) Nothing env =
       t2 <- tc e (Just t1) (extendEnv f t1 env)
       if t1 == t2 then return t1 else Left $ LTErr (EFix f mt1 e mt2) t1 t2
     (Nothing, Just t2) -> return t2
-    (Nothing, Nothing) -> Left $ LErr ("Missing type annotation for argument: " ++ f)
+    (Nothing, Nothing) -> Left $ LErr $ "Missing type annotation for argument: " ++ f ++ " in " ++ pretty fix
 tc (EFix f mt1 e mt2) (Just t) env =
   case (mt1, mt2) of 
     (Just t1, Just t2) | t1 == t2 && t == t1 -> return t1

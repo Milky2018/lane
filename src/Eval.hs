@@ -9,6 +9,8 @@ import Err ( LResult, LErr(LBug), reportErr )
 import Val ( VEnv, LVal(..) )
 import Builtins ( addBuiltins )
 import Env ( emptyEnv, lookupEnv, extendEnv )
+import Pretty (pretty)
+import Control.Monad.Except (mfix)
 
 data FinalVal =
     FinalBool Bool
@@ -29,7 +31,7 @@ createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
 evalTopLevelExpr :: VEnv -> LExpr -> LVal
 evalTopLevelExpr env expr = case eval expr env of
   Right value -> value
-  Left err    -> error $ "evalTopLevelDef: " ++ reportErr err
+  Left err    -> error $ "evalTopLevelDef: " ++ pretty expr ++ "\n" ++ reportErr err
 
 runProg :: LProg -> FinalVal
 runProg prog = 
@@ -62,9 +64,9 @@ eval (EApp e1 e2) env = do
       bif v2
     _ -> Left (LBug (show e1 ++ "not a function"))
 eval (ELam arg _ body _) env = return $ LValLam arg body env
-eval (EFix arg _ body _) env = do
-  let env' = extendEnv arg (LValLam arg body env') env
-  eval body env'
+eval (EFix arg _ body _) env = mfix $ \val -> do
+  let newEnv = extendEnv arg val env
+  eval body newEnv
 eval (EIf cond b1 b2) env = do
   v1 <- eval cond env
   case v1 of

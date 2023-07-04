@@ -115,6 +115,7 @@ pExpr''' = expr <* spaces where
 
 atom = choice [
       try pLet
+    , try pLetrec
     , try pIf
     , try pLam
     , try pStructCons 
@@ -255,7 +256,7 @@ pLetrecClause = do
 pLam = do
   _ <- string resLam
   spaces
-  arg <- many1 (Parser.parens pTypedName <|> pUntypedName <* spaces)
+  arg <- many1 ((Parser.parens pTypedName <|> pUntypedName) <* spaces)
   t <-
     do
     _ <- string resTyping

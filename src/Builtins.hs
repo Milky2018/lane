@@ -66,7 +66,7 @@ makeBifFromBinOp name op =
     LValBif $ (\p -> Right . LValBif . p) $
       \a' b' -> case (corresback a', corresback b') of
         (Just a'', Just b'') -> Right $ cV $ op a'' b''
-        _ -> Left $ LErr $ name ++ " type error." ++ expected ++ actual
+        _ -> Left $ LErr $ "bin op " ++ name ++ " type error." ++ expected ++ actual
           where
-            expected = " expected: " ++ show (aTy, bTy)
-            actual = " actual: " ++ show (a', b')
+            expected = " expected types: " ++ show (aTy, bTy)
+            actual = " actual expressions: " ++ show (a', b')
