@@ -13,3 +13,4 @@ eval : LProg -> LVal
 * Algebraic data types
 * Generic types 
 * IO
+* Effects

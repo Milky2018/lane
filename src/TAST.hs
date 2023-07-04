@@ -30,6 +30,7 @@ lookallupExpr _udt (EString s) = EString s
 lookallupExpr _udt (EId s) = EId s
 lookallupExpr udt (EApp e1 e2) = EApp (lookallupExpr udt e1) (lookallupExpr udt e2)
 lookallupExpr udt (ELam name ty body retTy) = ELam name (fmap (`lookupUdt` udt) ty) (lookallupExpr udt body) (fmap (`lookupUdt` udt) retTy)
+lookallupExpr udt (EFix name ty body retTy) = EFix name (fmap (`lookupUdt` udt) ty) (lookallupExpr udt body) (fmap (`lookupUdt` udt) retTy)
 lookallupExpr udt (EIf e1 e2 e3) = EIf (lookallupExpr udt e1) (lookallupExpr udt e2) (lookallupExpr udt e3)
 lookallupExpr udt (EAccess e field) = EAccess (lookallupExpr udt e) field
 lookallupExpr udt (EStruct name fields) = EStruct name (map (Data.Bifunctor.second (lookallupExpr udt)) fields)

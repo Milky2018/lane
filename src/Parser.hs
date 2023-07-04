@@ -192,13 +192,6 @@ pType' :: Parser RType
 pType' = ty <* spaces where
   ty = Parser.parens pType <|> pTypeAtom <?> "type"
 
--- pTypeAtom = choice
---   [ try $ string resTBool >> return RTBool
---   , try $ string resTInt >> return RTInt
---   , try $ string resTString >> return RTString
---   , try $ string resTUnit >> return RTUnit
---   , identifier >>= \name -> return $ RTId name 
---   ] <?> "type atom"
 pTypeAtom = (identifier >>= \name -> return $ RTId name) <?> "type atom"
 
 pArrowType = do
@@ -240,6 +233,25 @@ pLetClause = do
   e1 <- pExpr
   return (id', e1)
 
+pLetrec = do 
+  _ <- string resLetrec
+  spaces
+  letrecClauses <- pLetrecClause `sepBy1` (string resComma <* spaces)
+  spaces
+  _ <- string resIn
+  spaces
+  e2 <- pExpr
+  return $ RELetrec letrecClauses e2
+
+pLetrecClause :: Parser (TypedName, RExpr)
+pLetrecClause = do 
+  id' <- try pTypedName <|> pUntypedName
+  spaces
+  _ <- string resAssign
+  spaces
+  e1 <- pExpr
+  return (id', e1)
+
 pLam = do
   _ <- string resLam
   spaces
@@ -253,7 +265,7 @@ pLam = do
     <|>
     return Nothing
   spaces
-  _ <- string resAssign
+  _ <- string resFat
   spaces
   body <- pExpr
   return $ RELam arg body t
@@ -292,6 +304,7 @@ laneReserved =
   , resSub
   , resAssign
   , resLet
+  , resLetrec
   , resIn
   , resIf
   , resThen
@@ -324,11 +337,12 @@ resAdd = "+"
 resSub = "-"
 resAssign = "="
 resLet = "let"
+resLetrec = "letrec"
 resIn = "in"
 resIf = "if"
 resThen = "then"
 resElse = "else"
-resLam = "fun"
+resLam = "fn"
 resDef = "def"
 resSpace = " "
 -- resTBool = "Bool"

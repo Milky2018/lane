@@ -20,9 +20,10 @@ data RExpr
   = REInt Int -- 1 | 2 | 3 | ...
   | REString String -- ""
   | REId String -- id
-  | RELet [(TypedName, RExpr)] RExpr -- let x1 : t1 = e1; x2 : t2 = e2 ... in expr
+  | RELet [(TypedName, RExpr)] RExpr -- let x1 : t1 = e1, x2 : t2 = e2 ... in expr
+  | RELetrec [(TypedName, RExpr)] RExpr -- letrec f1 : t1 = e1, f2 : t2 = e2 ... in expr
   | REBin String RExpr RExpr -- expr + expr
-  | RELam [TypedName] RExpr (Maybe RType) -- fun (x1 : t1) (x2 : t2) ... \=> expr
+  | RELam [TypedName] RExpr (Maybe RType) -- fn (x1 : t1) (x2 : t2) ... \=> expr
   | REIf RExpr RExpr RExpr -- if expr then expr else expr
   | REAccess RExpr String -- expr . field
   | REStructCons String [(String, RExpr)] -- S { field1 = e1, field2 = e2, ... }
@@ -64,16 +65,32 @@ trans (RProg re) = Prog (map transTLStmt re)
     transExpr (REInt i) = EInt i
     transExpr (REString s) = EString s
     transExpr (REId i) = EId i
-    -- let x1 : t1 = e1; x2 : t2 = e2 in expr
-    -- (fun (x1 : t1) : ? => fun (x2 : t2) : ? => expr) e1 e2
+    -- let x1 : t1 = e1, x2 : t2 = e2 in expr
+    -- (fn (x1 : t1) : ? => fn (x2 : t2) : ? => expr) e1 e2
     transExpr (RELet bindings e) = case bindings of
       [] -> error "compiler error: RELet with empty let clause"
-      [(TypedName var ty, body)] -> EApp (ELam var (fmap transType ty) (transExpr e) Nothing) (transExpr body)
-      ((TypedName var ty, body) : rest) -> EApp (ELam var (fmap transType ty) (transExpr (RELet rest e)) Nothing) (transExpr body)
+      [(TypedName var ty, body)] -> EApp 
+        (ELam var (fmap transType ty) (transExpr e) Nothing) 
+        (transExpr body)
+      ((TypedName var ty, body) : rest) -> EApp 
+        (ELam var (fmap transType ty) (transExpr (RELet rest e)) Nothing) 
+        (transExpr body)
+    -- letrec f1 : t1 = e1, f2: t2 = e2 in expr 
+    -- (fn (f1 : t1) : ? => fn (f2 : t2) : ? => expr) (fix (fn (f1 : t1) : ? => e1)) (fix (fn (f1 : t1) : ? => e2)) 
+    transExpr (RELetrec bindings e) = case bindings of 
+      [] -> error "compiler error: RELetrec with empty let clause"
+      [(TypedName var ty, body)] -> EApp 
+        (ELam var (fmap transType ty) (transExpr e) Nothing)
+        (EFix var (fmap transType ty) (transExpr body) Nothing)
+      ((TypedName var ty, body) : rest) -> EApp 
+        (ELam var (fmap transType ty) (transExpr (RELetrec rest e)) Nothing)
+        (EFix var (fmap transType ty) (transExpr body) Nothing)
+    -- e1 + e2
+    -- (+ e1) e2
     transExpr (REBin " " e1 e2) = EApp (transExpr e1) (transExpr e2)
     transExpr (REBin op e1 e2) = EApp (EApp (EId op) (transExpr e1)) (transExpr e2)
-    -- fun (x1 : t1) (x2 : t2) : rt => body
-    -- fun (x1 : t) : ? => fun (x2 : t2) : rt => body
+    -- fn (x1 : t1) (x2 : t2) : rt => body
+    -- fn (x1 : t) : ? => fn (x2 : t2) : rt => body
     transExpr (RELam args e retT) = case args of
       [] -> error "compiler error: RELam with empty argument list"
       [TypedName var ty] -> ELam var (fmap transType ty) (transExpr e) (transType <$> retT)

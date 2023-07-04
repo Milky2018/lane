@@ -30,6 +30,7 @@ elimTypeExpr (EString s) = EString s
 elimTypeExpr (EId s) = EId s
 elimTypeExpr (EApp e1 e2) = EApp (elimTypeExpr e1) (elimTypeExpr e2)
 elimTypeExpr (ELam name _ body _) = ELam name () (elimTypeExpr body) ()
+elimTypeExpr (EFix name _ body _) = EFix name () (elimTypeExpr body) () 
 elimTypeExpr (EIf e1 e2 e3) = EIf (elimTypeExpr e1) (elimTypeExpr e2) (elimTypeExpr e3)
 elimTypeExpr (EAccess e field) = EAccess (elimTypeExpr e) field
 elimTypeExpr (EStruct name fields) = EStruct name (map (Data.Bifunctor.second elimTypeExpr) fields)
@@ -108,6 +109,30 @@ tc (ELam _x _mt1 _e _mt2) (Just t) _ = Left $
   -- LTErr (ELam x mt1 e mt2) 
   --       t 
   --       (TVLam (fromMaybe (LTId "<unknown>") mt1) (fromMaybe (LTId "<unknown>") mt2))
+
+tc (EFix f mt1 e mt2) Nothing env = 
+  case (mt1, mt2) of 
+    (Just t1, Just t2) | t1 == t2 -> return t1
+    (Just t1, Just t2) -> Left $ LTErr (EFix f mt1 e mt2) t1 t2
+    (Just t1, Nothing) -> do 
+      t2 <- tc e (Just t1) (extendEnv f t1 env)
+      if t1 == t2 then return t1 else Left $ LTErr (EFix f mt1 e mt2) t1 t2
+    (Nothing, Just t2) -> return t2
+    (Nothing, Nothing) -> Left $ LErr ("Missing type annotation for argument: " ++ f)
+tc (EFix f mt1 e mt2) (Just t) env =
+  case (mt1, mt2) of 
+    (Just t1, Just t2) | t1 == t2 && t == t1 -> return t1
+    (Just t1, Just t2) | t1 == t2 -> Left $ LTErr (EFix f mt1 e mt2) t t1
+    (Just t1, Just t2) -> Left $ LTErr (EFix f mt1 e mt2) t1 t2
+    (Just t1, Nothing) | t == t1 -> do 
+      t2 <- tc e (Just t1) (extendEnv f t1 env)
+      if t1 == t2 then return t1 else Left $ LTErr (EFix f mt1 e mt2) t1 t2
+    (Just t1, Nothing) -> Left $ LTErr (EFix f mt1 e mt2) t t1
+    (Nothing, Just t2) | t == t2 -> return t2
+    (Nothing, Just t2) -> Left $ LTErr (EFix f mt1 e mt2) t t2
+    (Nothing, Nothing) -> do 
+      t2 <- tc e (Just t) (extendEnv f t env)
+      if t == t2 then return t else Left $ LTErr (EFix f mt1 e mt2) t t2
 
 tc (EIf e1 e2 e3) t env = do
   _t1 <- tc e1 (Just TVBool) env 

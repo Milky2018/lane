@@ -1,6 +1,6 @@
 struct Person {
-    name : String,
-    age : Int
+  name : String,
+  age : Int
 }
 
 def main : Int = 

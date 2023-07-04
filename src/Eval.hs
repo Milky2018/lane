@@ -62,6 +62,9 @@ eval (EApp e1 e2) env = do
       bif v2
     _ -> Left (LBug (show e1 ++ "not a function"))
 eval (ELam arg _ body _) env = return $ LValLam arg body env
+eval (EFix arg _ body _) env = do
+  let env' = extendEnv arg (LValLam arg body env') env
+  eval body env'
 eval (EIf cond b1 b2) env = do
   v1 <- eval cond env
   case v1 of
