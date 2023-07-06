@@ -124,14 +124,6 @@ atom = choice [
     , pId
     ] <?> "atom"
 
-eol :: Parser String
-eol =
-      try (string "\n\r")
-  <|> try (string "\r\n")
-  <|> string "\n"
-  <|> string "\r"
-  <?> "end of line"
-
 spacef = spaces
          *> notFollowedBy (choice $ map (try . string) laneReserved)
          >> return (REBin resSpace)
