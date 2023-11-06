@@ -2,7 +2,7 @@ module Profile (laneProfile) where
   
 import Parser (parseLaneProg)
 import Raw (trans)
-import Ty (pretty)
+import Pretty ( pretty )
 import TC (typeCheck, elimType)
 import Err (reportErr)
 import Eval (runProg)
@@ -10,24 +10,30 @@ import Eval (runProg)
 laneProfile :: String -> IO ()
 laneProfile progText = do
   putStrLn "Lane profiling"
-  putStrLn "=============="
+  doubleSepLine
   putStrLn "Parsing program, output Raw AST:"
   let rawAst = case parseLaneProg progText of 
         Left err -> error (show err)
         Right ast -> ast
   print rawAst
-  putStrLn "---------------------------"
+  sepLine
   putStrLn "Translating Raw AST to MT AST:"
   let mtAst = trans rawAst 
   print $ pretty mtAst
-  putStrLn "---------------------------"
+  sepLine
   putStrLn "Type checking MT AST:"
   let lprog = case typeCheck mtAst of 
         Nothing -> elimType mtAst
         Just err -> error (reportErr err)
   print $ pretty lprog
-  putStrLn "---------------------------"
+  sepLine
   putStrLn "Evaluation, output final value:"
   print $ runProg lprog
-  putStrLn "---------------------------"
+  sepLine
   putStrLn "Done"
+
+sepLine :: IO ()
+sepLine = putStrLn "---------------------------"
+
+doubleSepLine :: IO ()
+doubleSepLine = putStrLn "==========================="

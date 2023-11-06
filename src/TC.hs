@@ -36,6 +36,8 @@ elimTypeExpr (EIf e1 e2 e3) = EIf (elimTypeExpr e1) (elimTypeExpr e2) (elimTypeE
 elimTypeExpr (EAccess e field) = EAccess (elimTypeExpr e) field
 elimTypeExpr (EStruct name fields) = EStruct name (map (Data.Bifunctor.second elimTypeExpr) fields)
 
+-- Typecheck a program, and maybe returns an error if the program does not 
+-- typecheck or has some other errors. 
 typeCheck :: MTProg -> Maybe LErr
 typeCheck prog =
   case initialTEnv prog (addTBuiltins emptyEnv) (addBuiltinTypes emptyEnv) of

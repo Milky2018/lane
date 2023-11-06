@@ -9,12 +9,20 @@ import TAST ( TVEnv )
 
 data NamedBi = NamedBi String LTypeVal LVal 
 
+-- Add a builtin function to a value environment. For example, function "+" in 
+-- Lane is added to the value environment as a function in the interpreter 
+-- that just does the addition.
+--
+-- Usage: addBuiltin - [+'] => [-', +']. The -' and +' means a function equipped  
+-- with its interpreted value. 
 addBuiltin :: NamedBi -> VEnv -> VEnv
 addBuiltin (NamedBi name _ bi) = extendEnv name bi
 
 addBuiltins :: VEnv -> VEnv
 addBuiltins env = foldr addBuiltin env builtins
 
+-- Add a builtin function to a type environment. For example, function "+" in 
+-- Lane is added to the type environment with type Int -> Int -> Int. 
 addTBuiltin :: NamedBi -> TAST.TVEnv -> TAST.TVEnv
 addTBuiltin (NamedBi name ty _) = extendEnv name ty
 

@@ -11,8 +11,8 @@ import qualified Data.Bifunctor
 newtype RProg = RProg [RTLStmt] deriving (Show, Eq)
 
 data RTLStmt
-  = RTLFunc String [TypedName] RExpr (Maybe RType) -- def f (x1 : t1) (x2 : t2) ... \=> expr
-  | RTLExp TypedName RExpr -- def x : t \=> expr
+  = RTLFunc String [TypedName] RExpr (Maybe RType) -- def f (x1 : t1) (x2 : t2) ... = expr
+  | RTLExp TypedName RExpr -- def x : t = expr
   | RTLStruct String [TypedName] -- struct S { field1 : t1, field2 : t2, ... }
   deriving (Show, Eq)
 

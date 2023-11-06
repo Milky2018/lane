@@ -10,5 +10,9 @@ builtinTypes = [
   , ("Unit", TVUnit)
   ]
 
+-- Add builtin types to the type environment. 
+-- Usage: addBuiltinTypes [] => 
+--  [Bool |-> TVBool, 
+--   Int  |-> TVInt, ... ]
 addBuiltinTypes :: UDT -> UDT
 addBuiltinTypes udts = foldr (uncurry extendEnv) udts builtinTypes

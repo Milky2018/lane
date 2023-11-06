@@ -33,6 +33,7 @@ evalTopLevelExpr env expr = case eval expr env of
   Right value -> value
   Left err    -> error $ "evalTopLevelDef: " ++ pretty expr ++ "\n" ++ reportErr err
 
+-- TODO: when IO is added, the main expression should be typed IO.
 runProg :: LProg -> FinalVal
 runProg prog = 
   let env = createInitialEnv prog (addBuiltins emptyEnv)

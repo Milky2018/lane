@@ -7,6 +7,12 @@ import AST (TLStmt(..), Prog (..))
 import Data.Foldable (foldlM)
 import Env (extendEnv)
 
+-- Add top level definitions to the type environment. Now, the top level 
+-- definitions will be added one by one, which does not support mutual 
+-- recursion. 
+-- Usage: initialTEnv [exp1, func1, struct1] [+', -', *'] [Int', String', Bool'] =>
+--        ( [+', -', *', exp1', func1']
+--          [Int', String', Bool', struct1'] )
 initialTEnv :: MTProg -> TVEnv -> UDT -> LResult (TVEnv, UDT)
 initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
   where
