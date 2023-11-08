@@ -1,4 +1,4 @@
-# Repo Overview
+# Repo overview
 
 Root path is a stack project workspace.
 
@@ -72,7 +72,15 @@ The typechecker will check a `MTProg` and maybe returns an type error.
 
 ## Elim
 
-Simply eliminate all types in a `MTProg`. 
+Simply eliminate all types in a `MTProg` and get a `LProg`. 
+
+## Eval
+
+Finally, evaluate the `LProg` and get a final value.
+
+### Create initial environment
+
+
 
 # Types
 
@@ -87,11 +95,11 @@ The main difference between RProg and LProg is
 * the multiple-variable **let bindings** and multiple-argument **function definitions** will be translated to the simplest one-argument form in LProg.
 * the **recursive let bindings** will be translated to **fix definitions** in LProg.
 
-### Top Level Definitions
+### Top level definitions
 
 Containing 3 top level statement definitions: 
 
-#### Top Level Function Definition
+#### Top level function definition
 
 ```
 def f (x1 : t1) (x2 : t2) ... (xn : tn) : t = e
@@ -103,7 +111,7 @@ will be translated to `LStmt`
 def f : t1 -> t2 -> ... -> t = fn (x1 : t1) (x2 : t2) ... (xn : tn) : t = e
 ```
 
-#### Top Level Expression
+#### Top level expression
 
 ```
 def x : t = e 
@@ -115,7 +123,7 @@ will be translated to
 def x : t = e
 ```
 
-#### Top Level Structure Definition 
+#### Top level structure definition 
 
 ```
 struct S { f1 : t1, f2 : t2, ... , fn : tn }
@@ -135,7 +143,7 @@ struct S { f1 : t1, f2 : t2, ... , fn : tn }
 * String
 * Identifier
 
-#### Let Binding 
+#### Let binding 
 
 ```
 let x1 : t1 = e1, x2 : t2 = e2 ... in expr
@@ -147,11 +155,9 @@ will be translated to LExpr:
 (fn (x1 : t1) : ? => fn (x2 : t2) : ? => expr) e1 e2
 ```
 
-TODO: 
+TODO: This will cause problems: in the future we may want recursive bindings in multiple `let` clauses. 
 
-This will cause problems: in the future we may want recursive bindings in multiple `let` clauses. 
-
-#### Recursive Let Binding
+#### Recursive let binding
 
 ```
 letrec f1 : t1 = e1, f2: t2 = e2 in expr 
@@ -163,11 +169,9 @@ will be translated to LExpr:
 (fn (f1 : t1) : ? => fn (f2 : t2) : ? => expr) (fix (fn (f1 : t1) : ? => e1)) (fix (fn (f1 : t1) : ? => e2)) 
 ```
 
-TODO: 
+TODO: The same problem as `let` binding.
 
-The same problem as `let` binding.
-
-#### Binary Operations 
+#### Binary operations 
 
 ```
 e1 + e2
@@ -197,7 +201,7 @@ will be translated to LExpr:
 fn (x1 : t) : ? => fn (x2 : t2) : rt => body
 ```
 
-#### If Expression 
+#### If expression 
 
 ```
 if expr1 then expr2 else expr3
@@ -209,7 +213,7 @@ will be translated to LExpr:
 if expr1 then expr2 else expr3
 ```
 
-#### Struct Field Access
+#### Struct field access
 
 ```
 expr.f
@@ -223,7 +227,7 @@ expr.f
 
 Note: the dot operator `.` is not a binary operator.
 
-#### Struct Constructure Literal
+#### Struct construction literal
 
 ```
 S { f1 = e1, f2 = e2, ... }

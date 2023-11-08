@@ -15,4 +15,4 @@ main = do
       case command of 
         "profile" -> mapM_ laneProfile files
         "run" -> mapM_ (print . lanei) files
-        _ -> putStrLn "Usage: lane <filename>"
+        _ -> putStrLn "Usage: lane profile|run files"

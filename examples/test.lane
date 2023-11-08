@@ -1,0 +1,4 @@
+def main : Int = 
+  let x = y
+    , y = 5
+  in x
