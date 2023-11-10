@@ -1,4 +1,4 @@
-def main : Int = 
+def main : Bool = 
   letrec 
     odd : Int -> Bool = 
       fn x => if x == 0 then false else even (x - 1)

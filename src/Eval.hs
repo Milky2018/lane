@@ -10,7 +10,8 @@ import Val ( VEnv, LVal(..) )
 import Builtins ( addBuiltins )
 import Env ( emptyEnv, lookupEnv, extendEnv )
 import Pretty (pretty)
-import Control.Monad.Except (mfix)
+import Control.Monad.Fix (mfix)
+import Control.Monad (foldM)
 
 data FinalVal =
     FinalBool Bool
@@ -65,8 +66,18 @@ eval (EApp e1 e2) env = do
       bif v2
     _ -> Left (LBug (show e1 ++ "not a function"))
 eval (ELam arg _ body _) env = return $ LValLam arg body env
-eval (EFix arg _ body _) env = mfix $ \val -> do
-  let newEnv = extendEnv arg val env
+-- eval (EFix arg _ body _) env = mfix $ \val -> do
+--   let newEnv = extendEnv arg val env
+--   eval body newEnv
+eval (ELetrec bindings body) env = do
+  newEnv <- mfix $ \newEnv -> 
+        foldM 
+          (\env' (name, _, expr) -> 
+            do 
+            val <- eval expr newEnv 
+            return $ extendEnv name val env')
+          env 
+          bindings
   eval body newEnv
 eval (EIf cond b1 b2) env = do
   v1 <- eval cond env

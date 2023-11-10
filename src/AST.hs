@@ -15,7 +15,7 @@ data Expr t =
   | EId String
   | EApp (Expr t) (Expr t)
   | ELam String t (Expr t) t
-  | EFix String t (Expr t) t
+  | ELetrec [(String, t, Expr t)] (Expr t)
   | EIf (Expr t) (Expr t) (Expr t)
   | EAccess (Expr t) String
   | EStruct String [(String, Expr t)]
@@ -47,7 +47,7 @@ prettyExpr (EString s) = show s
 prettyExpr (EInt i) = show i
 prettyExpr (EApp e1 e2) = "(" ++ prettyExpr e1 ++ " " ++ prettyExpr e2 ++ ")"
 prettyExpr (ELam arg argT body _) = "(\\" ++ "(" ++ arg ++ " : " ++ pretty argT ++ ") -> " ++ prettyExpr body ++ ")"
-prettyExpr (EFix arg argT body _) = "(/\\" ++ "(" ++ arg ++ " : " ++ pretty argT ++ ") -> " ++ prettyExpr body ++ ")"
+prettyExpr (ELetrec bindings body) = "letrec " ++ intercalate ", " (map (\(name, t, expr) -> name ++ " : " ++ pretty t ++ " = " ++ prettyExpr expr) bindings) ++ " in " ++ prettyExpr body
 prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"
 prettyExpr (EAccess e field) = prettyExpr e ++ "." ++ field
 prettyExpr (EStruct name fields) = name ++ " {" ++ intercalate ", " (map (\(f, e) -> f ++ " = " ++ prettyExpr e) fields) ++ "}"

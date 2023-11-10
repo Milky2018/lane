@@ -20,3 +20,4 @@ main = hspec $ do
       checkExample "examples/struct.lane" (FinalInt (-2))
       checkExample "examples/moreargs.lane" (FinalInt 2)
       checkExample "examples/letrec.lane" (FinalInt 120)
+      checkExample "examples/multiletrec.lane" (FinalBool True)

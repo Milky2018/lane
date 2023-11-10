@@ -75,16 +75,10 @@ trans (RProg re) = Prog (map transTLStmt re)
       ((TypedName var ty, body) : rest) -> EApp 
         (ELam var (fmap transType ty) (transExpr (RELet rest e)) Nothing) 
         (transExpr body)
-    -- letrec f1 : t1 = e1, f2: t2 = e2 in expr 
-    -- (fn (f1 : t1) : ? => fn (f2 : t2) : ? => expr) (fix (fn (f1 : t1) : ? => e1)) (fix (fn (f1 : t1) : ? => e2)) 
-    transExpr (RELetrec bindings e) = case bindings of 
-      [] -> error "compiler error: RELetrec with empty let clause"
-      [(TypedName var ty, body)] -> EApp 
-        (ELam var (fmap transType ty) (transExpr e) Nothing)
-        (EFix var (fmap transType ty) (transExpr body) Nothing)
-      ((TypedName var ty, body) : rest) -> EApp 
-        (ELam var (fmap transType ty) (transExpr (RELetrec rest e)) Nothing)
-        (EFix var (fmap transType ty) (transExpr body) Nothing)
+    -- letrec f1 : t1 = e1, f2 : t2 = e2 in expr 
+    -- letrec f1 : t1 = e1, f2 : t2 = e2 in expr 
+    transExpr (RELetrec bindings e) = 
+      ELetrec (fmap (\(TypedName name ty, body) -> (name, fmap transType ty, transExpr body)) bindings) (transExpr e)
     -- e1 + e2
     -- (+ e1) e2
     transExpr (REBin " " e1 e2) = EApp (transExpr e1) (transExpr e2)
