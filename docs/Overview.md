@@ -78,10 +78,6 @@ Simply eliminate all types in a `MTProg` and get a `LProg`.
 
 Finally, evaluate the `LProg` and get a final value.
 
-### Create initial environment
-
-
-
 # Types
 
 ## RProg
