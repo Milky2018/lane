@@ -9,7 +9,7 @@ data TLStmt t
   | TLStruct String [(String, t)] 
   deriving (Show, Eq)
 
-data Expr t =  
+data Expr t = 
     EInt Int 
   | EString String
   | EId String

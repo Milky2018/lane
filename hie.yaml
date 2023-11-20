@@ -1,0 +1,13 @@
+cradle:
+  cabal:
+    - path: "src"
+      component: "lib:Lane"
+
+    - path: "app/Main.hs"
+      component: "Lane:exe:lane"
+
+    - path: "app/Paths_Lane.hs"
+      component: "Lane:exe:lane"
+
+    - path: "test"
+      component: "Lane:test:Lane-test"

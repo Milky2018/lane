@@ -1,4 +1,3 @@
-{-# HLINT ignore "Use <$>" #-}
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
@@ -8,6 +7,7 @@ module Parser
   )
 where
 
+import Control.Monad (void)
 import Raw (RExpr (..), RProg (..), RTLStmt (..), RType (..), TypedName (..))
 import Text.Parsec
 import Text.Parsec.Expr
@@ -55,8 +55,28 @@ laneParser = do
   eof
   return prog
 
+lineComment :: Parser ()
+lineComment = do
+  _ <- string "--"
+  _ <- manyTill anyChar (Control.Monad.void newline <|> eof)
+  return ()
+
+blockComment :: Parser ()
+blockComment = do
+  _ <- string "{-"
+  _ <- manyTill anyChar (try $ string "-}")
+  return ()
+
+comment :: Parser ()
+comment = try lineComment <|> blockComment
+
+skipCommentsAndWhitespace :: Parser ()
+skipCommentsAndWhitespace = skipMany (Control.Monad.void (string " ") <|> comment <|> Control.Monad.void newline)
+
 pProg :: Parser RProg
-pProg = RProg <$> many pTLStmt
+pProg =
+  skipCommentsAndWhitespace
+    >> RProg <$> many pTLStmt
 
 pTLStmt :: Parser RTLStmt
 pTLStmt =

@@ -1,8 +1,0 @@
-struct Box<a> {
-    content : a 
-}
-
-def main : Int = 
-  let b1 = Box { content = 1 } 
-    , b2 : Box<Int> = Box { content = 2 }
-  in b1.content + b2.content

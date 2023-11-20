@@ -28,4 +28,3 @@ initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
         Just ty' -> Right (name, lookupUdt ty' udt)
         Nothing -> Left $ LErr "Struct fields need type annotations") fields
       return (env, extendEnv struct (TVStruct struct fieldTypes) udt)
-

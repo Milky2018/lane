@@ -1,1 +1,5 @@
+-- This is some comment. 
+{-
+Also
+ -}
 def main : String = "Hello World"
