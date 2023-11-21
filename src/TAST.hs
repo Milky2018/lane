@@ -23,6 +23,7 @@ lookallup udt (Prog stmts) = Prog $ map (lookallupStmt udt) stmts
 lookallupStmt :: UDT -> MTStmt -> TVStmt
 lookallupStmt udt (TLExp name ty body) = TLExp name (fmap (`lookupUdt` udt) ty) (lookallupExpr udt body)
 lookallupStmt udt (TLStruct struct fields) = TLStruct struct (map (Data.Bifunctor.second (fmap (`lookupUdt` udt))) fields)
+lookallupStmt _udt (TLEnum _name _variants) = undefined
 
 lookallupExpr :: UDT -> MTExpr -> TVExpr
 lookallupExpr _udt (EInt i) = EInt i
@@ -34,3 +35,4 @@ lookallupExpr udt (ELetrec bindings body) = ELetrec (map (\(name, ty, expr) -> (
 lookallupExpr udt (EIf e1 e2 e3) = EIf (lookallupExpr udt e1) (lookallupExpr udt e2) (lookallupExpr udt e3)
 lookallupExpr udt (EAccess e field) = EAccess (lookallupExpr udt e) field
 lookallupExpr udt (EStruct name fields) = EStruct name (map (Data.Bifunctor.second (lookallupExpr udt)) fields)
+lookallupExpr _udt (EEnum _name _variants) = undefined

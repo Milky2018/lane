@@ -25,8 +25,9 @@ data FinalVal =
 createInitialEnv :: LProg -> VEnv -> VEnv
 createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
   where
-    addDef env stmt@(TLExp name _ expr) = extendEnv name (evalTopLevelExpr newEnv expr) env
-    addDef env stmt@(TLStruct _ _) = env 
+    addDef env (TLExp name _ expr) = extendEnv name (evalTopLevelExpr newEnv expr) env
+    addDef env (TLStruct _ _) = env 
+    addDef env (TLEnum _ _) = undefined
     newEnv = createInitialEnv (Prog defs) oldEnv
     
 evalTopLevelExpr :: VEnv -> LExpr -> LVal
@@ -89,6 +90,7 @@ eval (EStruct name fields) env = do
     v <- eval expr env
     return (id', v)) fields
   return $ LValStruct name fields'
+eval (EEnum _name _variants) env = undefined
 eval (EAccess e field) env = 
   case eval e env of 
     Right (LValStruct _ fields) -> case lookup field fields of 

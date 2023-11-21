@@ -28,3 +28,11 @@ initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
         Just ty' -> Right (name, lookupUdt ty' udt)
         Nothing -> Left $ LErr "Struct fields need type annotations") fields
       return (env, extendEnv struct (TVStruct struct fieldTypes) udt)
+    -- addDef (env, udt) (TLEnum name variants) = do 
+    --   variantTypes <- mapM (\(variantName, tys) -> do
+    --     tys' <- mapM (\ty -> case ty of
+    --       Just ty' -> Right (lookupUdt ty' udt)
+    --       Nothing -> Left $ LErr "Enum variants need type annotations") tys
+    --     return (variantName, tys')) variants
+    --   return (env, extendEnv name (TVEnum name variantTypes) udt)
+    addDef _ (TLEnum _name _variants) = undefined

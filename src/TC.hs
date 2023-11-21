@@ -25,6 +25,7 @@ elimTypeStmt (TLExp name _ body) = TLExp name () (elimTypeExpr body)
 elimTypeStmt (TLStruct struct fields) = TLStruct struct elimedFields
   where
     elimedFields = map (\(name, _ty) -> (name, ())) fields
+elimTypeStmt (TLEnum _ _) = undefined
 
 elimTypeExpr :: MTExpr -> LExpr
 elimTypeExpr (EInt i) = EInt i
@@ -36,6 +37,7 @@ elimTypeExpr (ELetrec bindings body) = ELetrec (fmap (\(name, _ty, expr) -> (nam
 elimTypeExpr (EIf e1 e2 e3) = EIf (elimTypeExpr e1) (elimTypeExpr e2) (elimTypeExpr e3)
 elimTypeExpr (EAccess e field) = EAccess (elimTypeExpr e) field
 elimTypeExpr (EStruct name fields) = EStruct name (map (Data.Bifunctor.second elimTypeExpr) fields)
+elimTypeExpr (EEnum _name _variants) = undefined
 
 -- Typecheck a program, and maybe returns an error if the program does not 
 -- typecheck or has some other errors. 
@@ -60,6 +62,7 @@ tcStmt (TLExp _name ty body) env =
     Right _ -> Nothing
     Left err -> Just err
 tcStmt (TLStruct _struct _fields) _env = Nothing
+tcStmt (TLEnum _name _variants) _env = Nothing
 
 -- This type checker uses a simple bidirectional algorithm
 -- tc :: expr -> expected type -> type env -> udt -> result 
@@ -179,6 +182,8 @@ tc (EStruct n fields) (Just should) env =
               return (field, t)
             Nothing -> Left $ LTFiledNotFound field
     _ -> Left $ LTErr (EStruct n fields) should (TVStruct n [])
+
+tc (EEnum _n _fields) _ _env = undefined
 
 tc (EAccess expr field) should env = do
   t <- tc expr Nothing env

@@ -14,6 +14,7 @@ data RTLStmt
   = RTLFunc String [TypedName] RExpr (Maybe RType) -- def f (x1 : t1) (x2 : t2) ... = expr
   | RTLExp TypedName RExpr -- def x : t = expr
   | RTLStruct String [TypedName] -- struct S { field1 : t1, field2 : t2, ... }
+  | RTLEnum String [(String, [RType])] -- enum E { C1[t11, t12, ... ], C2[t21, t22, ... ], ... }
   deriving (Show, Eq)
 
 data RExpr
@@ -27,11 +28,12 @@ data RExpr
   | REIf RExpr RExpr RExpr -- if expr then expr else expr
   | REAccess RExpr String -- expr . field
   | REStructCons String [(String, RExpr)] -- S { field1 = e1, field2 = e2, ... }
+  | REEnumCons String [RExpr] -- C[e1, e2, ... ]
   deriving (Show, Eq)
 
 data RType
   = RTFunc RType RType
-  | RTId String 
+  | RTId String
   deriving (Show, Eq)
 
 data TypedName = TypedName String (Maybe RType) deriving (Show, Eq)
@@ -54,6 +56,10 @@ trans (RProg re) = Prog (map transTLStmt re)
       TLStruct
         name
         (map (\(TypedName name' ty) -> (name', transType <$> ty)) fields)
+    transTLStmt (RTLEnum name fields) =
+      TLEnum
+        name
+        (map (Data.Bifunctor.second (map (Just . transType))) fields)
 
     combineTypes :: [Maybe RType] -> Maybe RType -> Maybe RType
     combineTypes [] rt = rt
@@ -69,15 +75,15 @@ trans (RProg re) = Prog (map transTLStmt re)
     -- (fn (x1 : t1) : ? => fn (x2 : t2) : ? => expr) e1 e2
     transExpr (RELet bindings e) = case bindings of
       [] -> error "compiler error: RELet with empty let clause"
-      [(TypedName var ty, body)] -> EApp 
-        (ELam var (fmap transType ty) (transExpr e) Nothing) 
+      [(TypedName var ty, body)] -> EApp
+        (ELam var (fmap transType ty) (transExpr e) Nothing)
         (transExpr body)
-      ((TypedName var ty, body) : rest) -> EApp 
-        (ELam var (fmap transType ty) (transExpr (RELet rest e)) Nothing) 
+      ((TypedName var ty, body) : rest) -> EApp
+        (ELam var (fmap transType ty) (transExpr (RELet rest e)) Nothing)
         (transExpr body)
     -- letrec f1 : t1 = e1, f2 : t2 = e2 in expr 
     -- letrec f1 : t1 = e1, f2 : t2 = e2 in expr 
-    transExpr (RELetrec bindings e) = 
+    transExpr (RELetrec bindings e) =
       ELetrec (fmap (\(TypedName name ty, body) -> (name, fmap transType ty, transExpr body)) bindings) (transExpr e)
     -- e1 + e2
     -- (+ e1) e2
@@ -92,6 +98,7 @@ trans (RProg re) = Prog (map transTLStmt re)
     transExpr (REIf cond b1 b2) = EIf (transExpr cond) (transExpr b1) (transExpr b2)
     transExpr (REAccess e field) = EAccess (transExpr e) field
     transExpr (REStructCons name fields) = EStruct name (map (Data.Bifunctor.second transExpr) fields)
+    transExpr (REEnumCons variantName fields) = EEnum variantName (map transExpr fields)
 
     transType (RTFunc t1 t2) = LTLam (transType t1) (transType t2)
     transType (RTId i) = LTId i

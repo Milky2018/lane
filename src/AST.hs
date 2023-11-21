@@ -7,6 +7,7 @@ newtype Prog t = Prog [TLStmt t] deriving (Show, Eq)
 data TLStmt t 
   = TLExp String t (Expr t) 
   | TLStruct String [(String, t)] 
+  | TLEnum String [(String, [t])]
   deriving (Show, Eq)
 
 data Expr t = 
@@ -19,6 +20,7 @@ data Expr t =
   | EIf (Expr t) (Expr t) (Expr t)
   | EAccess (Expr t) String
   | EStruct String [(String, Expr t)]
+  | EEnum String [Expr t]
   deriving (Eq, Show)
 
 type LProg = Prog ()
@@ -40,6 +42,7 @@ prettyProg (Prog stmts) = unlines $ map prettyStmt stmts
 prettyStmt :: Pretty t => TLStmt t -> String
 prettyStmt (TLExp name _ body) = name ++ " = " ++ prettyExpr body
 prettyStmt (TLStruct name fields) = "struct " ++ name ++ " {" ++ intercalate ", " (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
+prettyStmt (TLEnum name variants) = "enum " ++ name ++ " {" ++ intercalate ", " (map (\(f, ts) -> f ++ "[ " ++ intercalate ", " (map pretty ts) ++ " ]") variants) ++ "}"
 
 prettyExpr :: Pretty t => Expr t -> String 
 prettyExpr (EId i) = i 
@@ -51,3 +54,4 @@ prettyExpr (ELetrec bindings body) = "letrec " ++ intercalate ", " (map (\(name,
 prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"
 prettyExpr (EAccess e field) = prettyExpr e ++ "." ++ field
 prettyExpr (EStruct name fields) = name ++ " {" ++ intercalate ", " (map (\(f, e) -> f ++ " = " ++ prettyExpr e) fields) ++ "}"
+prettyExpr (EEnum name variants) = name ++ "[ " ++ intercalate ", " (map prettyExpr variants) ++ " ]"

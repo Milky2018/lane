@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wno-missing-signatures #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
+{-# HLINT ignore "Use <$>" #-}
 
 module Parser
   ( parseLaneProg,
@@ -14,6 +15,7 @@ import Text.Parsec.Expr
 import Text.Parsec.Language (LanguageDef)
 import Text.Parsec.String (Parser)
 import Text.Parsec.Token (GenLanguageDef (..), GenTokenParser (..), TokenParser, makeTokenParser)
+import Control.Monad.Identity (Identity)
 
 laneLangDef :: LanguageDef ()
 laneLangDef =
@@ -37,6 +39,8 @@ lexer = makeTokenParser laneLangDef
 pParens = Text.Parsec.Token.parens lexer
 
 pBraces = Text.Parsec.Token.braces lexer
+
+pBrackets = Text.Parsec.Token.brackets lexer 
 
 pReserved = Text.Parsec.Token.reserved lexer
 
@@ -83,39 +87,53 @@ pTLStmt =
   choice
     [ try pTLExp,
       try pTLFunc,
-      try pTLStruct
+      try pTLStruct,
+      pTLEnum
     ]
     <?> "top level statement"
 
 pTLExp :: Parser RTLStmt
 pTLExp = do
-  _ <- Parser.pReserved resDef
+  _ <- pReserved resDef
   typedName <- try pTypedName <|> pUntypedName
-  _ <- Parser.pReserved resAssign
+  _ <- pReserved resAssign
   body <- pExpr
   return $ RTLExp typedName body
 
 pTLFunc :: Parser RTLStmt
 pTLFunc = do
-  _ <- Parser.pReserved resDef
-  name <- Parser.pIdentifier
-  args <- many1 (Parser.pParens pTypedName)
+  _ <- pReserved resDef
+  name <- pIdentifier
+  args <- many1 (pParens pTypedName)
   t <-
     do
-      _ <- Parser.pReserved resTyping
+      _ <- pReserved resTyping
       ty <- pType
       return (Just ty)
       <|> return Nothing
-  _ <- Parser.pReserved resAssign
+  _ <- pReserved resAssign
   body <- pExpr
   return $ RTLFunc name args body t
 
 pTLStruct :: Parser RTLStmt
 pTLStruct = do
-  _ <- Parser.pReserved resStruct
-  structName <- Parser.pIdentifier
-  fields <- Parser.pBraces (sepBy pTypedName (Parser.pReserved resComma))
+  _ <- pReserved resStruct
+  structName <- pIdentifier
+  fields <- pBraces (sepBy pTypedName (pReserved resComma))
   return $ RTLStruct structName fields
+
+pTLEnum :: Parser RTLStmt 
+pTLEnum = do 
+  _ <- pReserved resEnum 
+  enumName <- pIdentifier 
+  variants <- pBraces pVariant `sepBy` pReserved resComma 
+  return $ RTLEnum enumName variants 
+
+pVariant :: Parser (String, [RType])
+pVariant = do 
+  variantName <- pIdentifier 
+  fields <- pBraces (sepBy pType (pReserved resComma))
+  return (variantName, fields)
 
 pExpr :: Parser RExpr
 pExpr =
@@ -126,7 +144,7 @@ pExpr' = try pApp <|> pExpr'' <?> "expression"
 
 pExpr'' = try pAccess <|> pExpr''' <?> "expression"
 
-pExpr''' = Parser.pParens pExpr <|> pAtom <?> "expression"
+pExpr''' = pParens pExpr <|> pAtom <?> "expression"
 
 pApp :: Parser RExpr
 pApp = do
@@ -141,6 +159,7 @@ pAtom =
       try pIf,
       try pLam,
       try pStructCons,
+      try pEnumCons, 
       pInt,
       pString,
       pId
@@ -149,25 +168,30 @@ pAtom =
 
 pAccess = do
   e <- pExpr'''
-  accessors <- many1 (Text.Parsec.string resDot >> Parser.pIdentifier)
+  accessors <- many1 (Text.Parsec.string resDot >> pIdentifier)
   return $ foldl REAccess e accessors
 
 pInt = natural lexer >>= \i -> return $ REInt (fromIntegral i)
 
 pStructCons = do
-  structName <- Parser.pIdentifier
-  fields <- Parser.pBraces (sepBy pField (Parser.pReserved resComma))
+  structName <- pIdentifier
+  fields <- pBraces (sepBy pField (pReserved resComma))
   return $ REStructCons structName fields
 
 pField = do
-  fieldName <- Parser.pIdentifier
-  _ <- Parser.pReserved resAssign
+  fieldName <- pIdentifier
+  _ <- pReserved resAssign
   fieldExpr <- pExpr
   return (fieldName, fieldExpr)
 
+pEnumCons = do 
+  variantName <- pIdentifier 
+  fields <- pBrackets (sepBy pExpr (pReserved resComma))
+  return $ REEnumCons variantName fields
+
 pString = REString <$> Text.Parsec.Token.stringLiteral lexer
 
-pId = REId <$> Parser.pIdentifier
+pId = REId <$> pIdentifier
 
 pType :: Parser RType
 pType =
@@ -175,73 +199,73 @@ pType =
     <?> "type"
 
 pType' :: Parser RType
-pType' = Parser.pParens pType <|> pTypeAtom <?> "type"
+pType' = pParens pType <|> pTypeAtom <?> "type"
 
-pTypeAtom = (Parser.pIdentifier >>= \name -> return $ RTId name) <?> "type atom"
+pTypeAtom = (pIdentifier >>= \name -> return $ RTId name) <?> "type atom"
 
 pArrowType = do
-  _ <- Parser.pReserved resArrow
+  _ <- pReserved resArrow
   return RTFunc
 
 pUntypedName :: Parser TypedName
 pUntypedName = do
-  id' <- Parser.pIdentifier
+  id' <- pIdentifier
   return (TypedName id' Nothing)
 
 pTypedName :: Parser TypedName
 pTypedName = do
-  id' <- Parser.pIdentifier
-  _ <- Parser.pReserved resTyping
+  id' <- pIdentifier
+  _ <- pReserved resTyping
   ty <- pType
   return (TypedName id' (Just ty))
 
 pLet = do
-  _ <- Parser.pReserved resLet
-  letClauses <- pLetClause `sepBy1` Parser.pReserved resComma
-  _ <- Parser.pReserved resIn
+  _ <- pReserved resLet
+  letClauses <- pLetClause `sepBy1` pReserved resComma
+  _ <- pReserved resIn
   e2 <- pExpr
   return $ RELet letClauses e2
 
 pLetClause :: Parser (TypedName, RExpr)
 pLetClause = do
   id' <- try pTypedName <|> pUntypedName
-  _ <- Parser.pReserved resAssign
+  _ <- pReserved resAssign
   e1 <- pExpr
   return (id', e1)
 
 pLetrec = do
-  _ <- Parser.pReserved resLetrec
-  letrecClauses <- pLetrecClause `sepBy1` Parser.pReserved resComma
-  _ <- Parser.pReserved resIn
+  _ <- pReserved resLetrec
+  letrecClauses <- pLetrecClause `sepBy1` pReserved resComma
+  _ <- pReserved resIn
   e2 <- pExpr
   return $ RELetrec letrecClauses e2
 
 pLetrecClause :: Parser (TypedName, RExpr)
 pLetrecClause = do
   id' <- try pTypedName <|> pUntypedName
-  _ <- Parser.pReserved resAssign
+  _ <- pReserved resAssign
   e1 <- pExpr
   return (id', e1)
 
 pLam = do
-  _ <- Parser.pReserved resLam
-  arg <- many1 (Parser.pParens pTypedName <|> pUntypedName)
+  _ <- pReserved resLam
+  arg <- many1 (pParens pTypedName <|> pUntypedName)
   t <-
     do
-      _ <- Parser.pReserved resTyping
+      _ <- pReserved resTyping
       ty <- pType
       return (Just ty)
       <|> return Nothing
-  _ <- Parser.pReserved resFat
+  _ <- pReserved resFat
   body <- pExpr
   return $ RELam arg body t
 
 pIf = do
-  _ <- Parser.pReserved resIf
+  _ <- pReserved resIf
   cond <- pExpr
-  _ <- Parser.pReserved resThen
+  _ <- pReserved resThen
   e1 <- pExpr
-  _ <- Parser.pReserved resElse
+  _ <- pReserved resElse
   e2 <- pExpr
   return $ REIf cond e1 e2
 
@@ -254,7 +278,8 @@ laneReservedNames =
     resElse,
     resLam,
     resDef,
-    resStruct
+    resStruct,
+    resEnum
   ]
 
 laneReservedOps =
@@ -330,6 +355,7 @@ resComma = ","
 resDot = "."
 
 resStruct = "struct"
+resEnum = "enum"
 
 opTable =
   [ infixLeftOps [resEq, resNeq, resLt, resGt, resLeq, resGeq],
@@ -337,10 +363,11 @@ opTable =
     infixLeftOps [resAdd, resSub]
   ]
 
+infixLeftOps :: [String] -> [Operator String () Identity RExpr]
 infixLeftOps = map (\op -> Infix (pOp op) AssocLeft)
 
 pOp name = do
-  _ <- Parser.pReservedOp name
+  _ <- pReservedOp name
   return $ REBin name
 
 examples =
