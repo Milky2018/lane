@@ -162,7 +162,14 @@ tc (EIf e1 e2 e3) t env = do
 
 tc (EStruct n fields) Nothing env = do
   fieldTypes <- mapM fieldType fields
-  return $ TVStruct n fieldTypes where
+  definedN <- case lookupEnv n env of
+    Just (TVStruct name fields') -> return (TVStruct name fields')
+    Just tv -> Left $ LTErr (EStruct n fields) (TVStruct n fieldTypes) tv
+    Nothing -> Left $ LErr $ "Struct " ++ n ++ " not found"
+  if definedN == TVStruct n fieldTypes 
+  then return definedN 
+  else Left $ LTErr (EStruct n fields) (TVStruct n fieldTypes) definedN
+  where
     fieldType (field, expr) = do
       t <- tc expr Nothing env
       return (field, t)
