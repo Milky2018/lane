@@ -9,8 +9,6 @@ type MTExpr = Expr (Maybe LType)
 type MTStmt = TLStmt (Maybe LType)
 type MTProg = Prog (Maybe LType)
 
--- type TEnv = Env String LType
-
 type TVEnv = Env String LTypeVal
 
 type TVExpr = Expr (Maybe LTypeVal)
@@ -23,7 +21,8 @@ lookallup udt (Prog stmts) = Prog $ map (lookallupStmt udt) stmts
 lookallupStmt :: UDT -> MTStmt -> TVStmt
 lookallupStmt udt (TLExp name ty body) = TLExp name (fmap (`lookupUdt` udt) ty) (lookallupExpr udt body)
 lookallupStmt udt (TLStruct struct fields) = TLStruct struct (map (Data.Bifunctor.second (fmap (`lookupUdt` udt))) fields)
-lookallupStmt _udt (TLEnum _name _variants) = undefined
+lookallupStmt udt (TLEnum name variants) = TLEnum name (map lookupVariant variants) where 
+  lookupVariant (variant, argTypes) = (variant, map (fmap (`lookupUdt` udt)) argTypes)
 
 lookallupExpr :: UDT -> MTExpr -> TVExpr
 lookallupExpr _udt (EInt i) = EInt i
@@ -35,4 +34,4 @@ lookallupExpr udt (ELetrec bindings body) = ELetrec (map (\(name, ty, expr) -> (
 lookallupExpr udt (EIf e1 e2 e3) = EIf (lookallupExpr udt e1) (lookallupExpr udt e2) (lookallupExpr udt e3)
 lookallupExpr udt (EAccess e field) = EAccess (lookallupExpr udt e) field
 lookallupExpr udt (EStruct name fields) = EStruct name (map (Data.Bifunctor.second (lookallupExpr udt)) fields)
-lookallupExpr _udt (EEnum _name _variants) = undefined
+lookallupExpr udt (EEnum enumName varName fields) = EEnum enumName varName (map (lookallupExpr udt) fields)

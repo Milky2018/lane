@@ -18,6 +18,7 @@ data LTypeVal =
   | TVBool
   | TVUnit
   | TVStruct String [(String, LTypeVal)]
+  | TVEnum String [(String, [LTypeVal])]
   | TVLam LTypeVal LTypeVal
   deriving (Show, Eq)
 
@@ -26,19 +27,10 @@ lookupUdt (LTId name) udt = case lookupEnv name udt of
   Nothing -> error $ "Type " ++ name ++ " not found"
   Just t -> t
 lookupUdt (LTLam t1 t2) udt = TVLam (lookupUdt t1 udt) (lookupUdt t2 udt)
--- lookupUdt (LTStruct name fields) udt = 
---   case lookupEnv name udt of 
---     Just (TVStruct _name _userDefStruct) -> 
---       let fields' = map (\(f, t) -> (f, lookupUdt t udt)) fields
---       in TVStruct name fields'
---     _ -> error $ "Type " ++ name ++ " not found"
--- lookupUdt (LTEnum _name _variants) _udt = undefined
 
 instance Pretty LType where 
   pretty (LTLam t1 t2) = "(" ++ pretty t1 ++ " -> " ++ pretty t2 ++ ")"
   pretty (LTId name) = name
-  -- pretty (LTStruct name fields) = "struct " ++ name ++ " {" ++ intercalate ", " (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
-  -- pretty (LTEnum name variants) = "enum " ++ name ++ " {" ++ intercalate ", " (map (\(f, ts) -> f ++ "[ " ++ intercalate ", " (map pretty ts) ++ " ]") variants) ++ "}"
 
 instance Pretty LTypeVal where 
   pretty TVInt = "Int"
@@ -46,4 +38,10 @@ instance Pretty LTypeVal where
   pretty TVBool = "Bool"
   pretty TVUnit = "()"
   pretty (TVStruct name fields) = name ++ " {" ++ intercalate ", " (map (\(f, t) -> f ++ " : " ++ pretty t) fields) ++ "}"
+  -- TODO: in the future we will support enum definitions like this:
+  --   enum OptionInt { some : Int -> OptionInt, None : OptionInt }
+  -- pretty (TVEnum name variants) = name ++ " {" ++ intercalate ", " (map (\(f, ts) -> f ++ " : " ++ intercalate " -> " (map pretty ts)) variants) ++ "}"
+  pretty (TVEnum name variants) = name ++ " {" ++ intercalate ", " (fmap prettyVaraint variants) ++ "}"
+    where 
+      prettyVaraint (f, ts) = f ++ "[" ++ intercalate ", " (fmap pretty ts) ++ "]"
   pretty (TVLam t1 t2) = "(" ++ pretty t1 ++ " -> " ++ pretty t2 ++ ")"

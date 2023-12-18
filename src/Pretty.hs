@@ -9,3 +9,6 @@ instance Pretty () where
 instance Pretty t => Pretty (Maybe t) where 
   pretty Nothing = "?"
   pretty (Just t) = pretty t
+
+instance (Pretty a, Pretty b) => Pretty (a, b) where 
+  pretty (a, b) = "(" ++ pretty a ++ "," ++ pretty b ++ ")"

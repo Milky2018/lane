@@ -6,6 +6,7 @@ import Err ( LErr(LErr) )
 import Env ( extendEnv )
 import Ty ( LTypeVal (..) )
 import TAST ( TVEnv )
+import Pretty (pretty)
 
 data NamedBi = NamedBi String LTypeVal LVal 
 
@@ -76,5 +77,5 @@ makeBifFromBinOp name op =
         (Just a'', Just b'') -> Right $ cV $ op a'' b''
         _ -> Left $ LErr $ "bin op " ++ name ++ " type error." ++ expected ++ actual
           where
-            expected = " expected types: " ++ show (aTy, bTy)
-            actual = " actual expressions: " ++ show (a', b')
+            expected = " expected types: " ++ pretty (aTy, bTy)
+            actual = " actual expressions: " ++ pretty (a', b')

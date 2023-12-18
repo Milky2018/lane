@@ -1,0 +1,6 @@
+enum MyBool {
+    myTrue[], 
+    myFalse[]
+}
+
+def main : MyBool = MyBool.myTrue[]

@@ -126,13 +126,13 @@ pTLEnum :: Parser RTLStmt
 pTLEnum = do 
   _ <- pReserved resEnum 
   enumName <- pIdentifier 
-  variants <- pBraces pVariant `sepBy` pReserved resComma 
+  variants <- pBraces (sepBy pVariant (pReserved resComma))
   return $ RTLEnum enumName variants 
 
 pVariant :: Parser (String, [RType])
 pVariant = do 
   variantName <- pIdentifier 
-  fields <- pBraces (sepBy pType (pReserved resComma))
+  fields <- pBrackets (sepBy pType (pReserved resComma))
   return (variantName, fields)
 
 pExpr :: Parser RExpr
@@ -168,7 +168,7 @@ pAtom =
 
 pAccess = do
   e <- pExpr'''
-  accessors <- many1 (Text.Parsec.string resDot >> pIdentifier)
+  accessors <- many1 (pReservedOp resDot >> pIdentifier)
   return $ foldl REAccess e accessors
 
 pInt = natural lexer >>= \i -> return $ REInt (fromIntegral i)
@@ -185,9 +185,11 @@ pField = do
   return (fieldName, fieldExpr)
 
 pEnumCons = do 
+  enumName <- pIdentifier
+  _ <- pReservedOp resDot
   variantName <- pIdentifier 
   fields <- pBrackets (sepBy pExpr (pReserved resComma))
-  return $ REEnumCons variantName fields
+  return $ REEnumCons enumName variantName fields
 
 pString = REString <$> Text.Parsec.Token.stringLiteral lexer
 
