@@ -1,0 +1,9 @@
+enum OptionInt {
+    some[Int], 
+    none[]
+}
+
+def main : OptionInt = 
+  let x = some 1 
+    , y = none 
+  in x

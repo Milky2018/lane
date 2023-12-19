@@ -22,7 +22,6 @@ data Expr t
   | EIf (Expr t) (Expr t) (Expr t)
   | EAccess (Expr t) String
   | EStruct String [(String, Expr t)]
-  | EEnum String String [Expr t]
   deriving (Eq, Show)
 
 type LProg = Prog ()
@@ -49,7 +48,6 @@ transExpr f (ELetrec bindings body) = ELetrec (map (\(name, ty, expr) -> (name, 
 transExpr f (EIf e1 e2 e3) = EIf (transExpr f e1) (transExpr f e2) (transExpr f e3)
 transExpr f (EAccess e field) = EAccess (transExpr f e) field
 transExpr f (EStruct s fields) = EStruct s (map (Data.Bifunctor.second (transExpr f)) fields)
-transExpr f (EEnum e c variants) = EEnum e c (map (transExpr f) variants)
 
 instance (Pretty t) => Pretty (Expr t) where
   pretty = prettyExpr
@@ -78,4 +76,3 @@ prettyExpr (ELetrec bindings body) = "letrec " ++ intercalate ", " (map (\(name,
 prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"
 prettyExpr (EAccess e field) = prettyExpr e ++ "." ++ field
 prettyExpr (EStruct name fields) = name ++ " {" ++ intercalate ", " (map (\(f, e) -> f ++ " = " ++ prettyExpr e) fields) ++ "}"
-prettyExpr (EEnum enumName varName fields) = enumName ++ "." ++ varName ++ "[ " ++ intercalate ", " (map prettyExpr fields) ++ " ]"

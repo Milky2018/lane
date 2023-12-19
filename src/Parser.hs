@@ -159,7 +159,6 @@ pAtom =
       try pIf,
       try pLam,
       try pStructCons,
-      try pEnumCons, 
       pInt,
       pString,
       pId
@@ -183,13 +182,6 @@ pField = do
   _ <- pReserved resAssign
   fieldExpr <- pExpr
   return (fieldName, fieldExpr)
-
-pEnumCons = do 
-  enumName <- pIdentifier
-  _ <- pReservedOp resDot
-  variantName <- pIdentifier 
-  fields <- pBrackets (sepBy pExpr (pReserved resComma))
-  return $ REEnumCons enumName variantName fields
 
 pString = REString <$> Text.Parsec.Token.stringLiteral lexer
 

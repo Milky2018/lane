@@ -34,4 +34,3 @@ lookallupExpr udt (ELetrec bindings body) = ELetrec (map (\(name, ty, expr) -> (
 lookallupExpr udt (EIf e1 e2 e3) = EIf (lookallupExpr udt e1) (lookallupExpr udt e2) (lookallupExpr udt e3)
 lookallupExpr udt (EAccess e field) = EAccess (lookallupExpr udt e) field
 lookallupExpr udt (EStruct name fields) = EStruct name (map (Data.Bifunctor.second (lookallupExpr udt)) fields)
-lookallupExpr udt (EEnum enumName varName fields) = EEnum enumName varName (map (lookallupExpr udt) fields)

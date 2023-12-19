@@ -30,7 +30,20 @@ createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
   where
     addDef env (TLExp name _ expr) = extendEnv name (evalTopLevelExpr newEnv expr) env
     addDef env (TLStruct _ _) = env
-    addDef env (TLEnum _ _) = env
+    addDef env (TLEnum enum vars) = foldl addVariant env vars
+      where
+        addVariant :: VEnv -> (String, [()]) -> VEnv
+        addVariant env' (varName, fields) = extendEnv varName (val varName fields) env'
+
+        val :: String -> [()] -> LVal 
+        val name [] = LValEnum enum name []
+        val name [()] = LValBif (\x -> return $ LValEnum enum name [x])
+        val name us = foldl f (LValEnum enum name []) us 
+        
+        f :: LVal -> () -> LVal
+        f (LValEnum enum' name xs) () = LValBif (\x -> return $ LValEnum enum' name (x:xs))
+        f _ _ = error "impossible"
+        -- val name (f:fs) = LValLam f (EApp (EId name) (EId f)) (extendEnv f (val f fs) env')
     newEnv = createInitialEnv (Prog defs) oldEnv
 
 evalTopLevelExpr :: VEnv -> LExpr -> LVal
@@ -89,9 +102,6 @@ eval (EStruct name fields) env = do
     v <- eval expr env
     return (id', v)) fields
   return $ LValStruct name fields'
-eval (EEnum enum var fields) env = do
-  fieldVals <- mapM (`eval` env) fields
-  return $ LValEnum enum var fieldVals
 eval (EAccess e field) env =
   case eval e env of
     Right (LValStruct _ fields) -> case lookup field fields of

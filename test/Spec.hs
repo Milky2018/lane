@@ -23,4 +23,4 @@ main = hspec $ do
       checkExample "examples/letrec.lane" (FinalVal (LValInt 120))
       checkExample "examples/multiletrec.lane" (FinalVal (LValBool True))
       checkExample "examples/enum.lane" (FinalVal (LValEnum "MyBool" "myTrue" []))
-      
+      checkExample "examples/enumargs.lane" (FinalVal (LValEnum "OptionInt" "some" [LValInt 1]))

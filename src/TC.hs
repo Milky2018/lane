@@ -172,31 +172,6 @@ tc (EStruct n fields) (Just should) env udt =
             Nothing -> Left $ LTFiledNotFound field
     _ -> Left $ LTErr (EStruct n fields) should (TVStruct n [])
 
-tc (EEnum enumName varName fields) Nothing env udt = do
-  variants <- case lookupEnv enumName udt of
-    Just (TVEnum _name variants) -> return variants
-    Just tv -> Left $ LTErr (EEnum enumName varName fields) (TVEnum enumName []) tv
-    Nothing -> Left $ LErr $ "Enum " ++ enumName ++ " not found"
-  case lookup varName variants of
-    Just argTypes -> do
-      let argMaybeTypes = Just <$> argTypes
-      if length fields /= length argTypes
-      then Left $ LTErr (EEnum enumName varName fields) (TVEnum enumName variants) (TVEnum enumName [])
-      else do
-        argTypes' <- mapM fieldType (zip fields argMaybeTypes)
-        if argTypes == argTypes'
-        then return (TVEnum enumName variants)
-        else Left $ LTErr (EEnum enumName varName fields) (TVEnum enumName variants) (TVEnum enumName [(varName, argTypes')])
-      where
-        fieldType (expr, should) = do
-          tc expr should env udt
-    Nothing -> Left $ LTErr (EEnum enumName varName fields) (TVEnum enumName []) (TVEnum enumName [])
-
-tc (EEnum enumName varName fields) (Just should) _env _udt = do 
-  case should of 
-    TVEnum name _varaints | name == enumName -> return should 
-    _ -> Left $ LTErr (EEnum enumName varName fields) should (TVEnum enumName [])
-
 tc (EAccess expr field) should env udt = do
   t <- tc expr Nothing env udt
   case t of

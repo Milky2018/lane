@@ -28,7 +28,6 @@ data RExpr
   | REIf RExpr RExpr RExpr -- if expr then expr else expr
   | REAccess RExpr String -- expr . field
   | REStructCons String [(String, RExpr)] -- S { field1 = e1, field2 = e2, ... }
-  | REEnumCons String String [RExpr] -- E.c[e1, e2, ... ]
   deriving (Show, Eq)
 
 data RType
@@ -98,7 +97,6 @@ trans (RProg re) = Prog (map transTLStmt re)
     transExpr (REIf cond b1 b2) = EIf (transExpr cond) (transExpr b1) (transExpr b2)
     transExpr (REAccess e field) = EAccess (transExpr e) field
     transExpr (REStructCons name fields) = EStruct name (map (Data.Bifunctor.second transExpr) fields)
-    transExpr (REEnumCons enumName variantName fields) = EEnum enumName variantName (map transExpr fields)
 
     transType (RTFunc t1 t2) = LTLam (transType t1) (transType t2)
     transType (RTId i) = LTId i

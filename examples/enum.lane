@@ -3,4 +3,4 @@ enum MyBool {
     myFalse[]
 }
 
-def main : MyBool = MyBool.myTrue[]
+def main : MyBool = myTrue

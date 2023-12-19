@@ -38,10 +38,21 @@ initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
     --       Nothing -> Left $ LErr "Enum variants need type annotations") tys
     --     return (variantName, tys')) variants
     --   return (env, extendEnv name (TVEnum name variantTypes) udt)
+    -- addDef (env, udt) (TLEnum name variants) = do 
+    --   variantTypes <- mapM (\(variantName, tys) -> do
+    --     tys' <- mapM (\ty -> case ty of
+    --       Just ty' -> Right (lookupUdt ty' udt)
+    --       Nothing -> Left $ LErr "Enum variants need type annotations") tys
+    --     return (variantName, tys')) variants
+    --   return (env, extendEnv name (TVEnum name variantTypes) udt)
     addDef (env, udt) (TLEnum name variants) = do 
-      variantTypes <- mapM (\(variantName, tys) -> do
+      variants' <- mapM (\(variantName, tys) -> do
         tys' <- mapM (\ty -> case ty of
           Just ty' -> Right (lookupUdt ty' udt)
           Nothing -> Left $ LErr "Enum variants need type annotations") tys
         return (variantName, tys')) variants
-      return (env, extendEnv name (TVEnum name variantTypes) udt)
+      let tyv = TVEnum name variants'
+      let addVariant env' (varName, tys) = extendEnv varName (foldl (flip TVLam) tyv tys) env'
+      let env' = foldl addVariant env variants'
+      let udt' = extendEnv name tyv udt 
+      return (env', udt')
