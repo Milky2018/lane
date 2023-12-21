@@ -12,7 +12,6 @@ import Data.Maybe (fromMaybe, fromJust)
 import Builtintypes (addBuiltinTypes)
 import Udt (initialTEnv)
 import Control.Monad (foldM, foldM_)
-import Pretty (pretty)
 
 elimType :: Maybe LType -> ()
 elimType _ = ()
@@ -60,14 +59,14 @@ tc (EId x) t env _udt = case lookupEnv x env of
     Just t'' | t'' == t' -> return t'
     Just t'' -> Left $ LTErr (EId x) t'' t'
     Nothing -> return t'
-  Nothing -> Left $ LErr ("Unbound variable: " ++ x)
+  Nothing -> Left $ LVariableNotInScope x 
 
 tc (EApp e1 e2) t env udt = do
   t2 <- tc e2 Nothing env udt
   case t of
     Just t' -> do
       t1 <- tc e1 (Just (LTLam t2 t')) env udt
-      if t1 == LTLam t2 t' then return t' else Left $ LBug "This should never happend"
+      if t1 == LTLam t2 t' then return t' else Left $ LBug "Application expression's type is not arrow"
     Nothing -> do
       t1 <- tc e1 Nothing env udt
       case t1 of
@@ -78,7 +77,7 @@ tc (EApp e1 e2) t env udt = do
 tc (ELam x mt1 e mt2) Nothing env udt = do
   t1 <- case mt1 of
     Just t  -> return t
-    Nothing -> Left $ LErr ("Missing type annotation for argument: " ++ x)
+    Nothing -> Left $ LFunctionArgumentTypeMissing x 
   let env' = extendEnv x t1 env
   t2 <- tc e mt2 env' udt
   return (LTLam t1 t2)
@@ -92,13 +91,13 @@ tc (ELam x mt1 e mt2) (Just (LTLam t1 t2)) env udt = do
     _ -> Left $ LTErr (ELam x mt1 e mt2) (LTLam t1 t2) (LTLam (fromMaybe t1 mt1) (fromMaybe t2 mt2))
   return (LTLam t1 t2)
 tc (ELam _x _mt1 _e _mt2) (Just t) _ _ = Left $
-  LErr $ "Expect a function type, but got" ++ show t
+  LTErr (ELam _x _mt1 _e _mt2) t (LTLam (fromMaybe t _mt1) (fromMaybe t _mt2))
 
 tc (ELetrec bindings e) should env udt = do
   newEnv <- foldM
       (\env' (name, mt, _expr) -> case mt of
         Just t -> return $ extendEnv name t env'
-        Nothing -> Left $ LErr $ "Missing type annotation for argument: " ++ name ++ " in " ++ pretty (ELetrec bindings e))
+        Nothing -> Left $ LLetrecBindingTypeMissing name)
       env
       bindings
   foldM_

@@ -1,0 +1,11 @@
+enum Expr {
+    lit[Int], 
+    add[Expr, Expr]
+}
+
+def eval (expr : Expr) : Int = match expr {
+    lit n => n,
+    add e1 e2 => eval(e1) + eval(e2)
+}
+
+def main : Int = eval (add (lit 1) (add (lit 2) (lit 3)))

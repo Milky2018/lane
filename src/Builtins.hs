@@ -2,7 +2,7 @@ module Builtins (NamedBi (..), addBuiltins, addTBuiltins, boolType, unitType, in
 
 import Val ( VEnv, LVal(..) )
 import AST ()
-import Err ( LErr(LErr) )
+import Err ( LErr (LBug) )
 import Env ( extendEnv )
 import Ty ( LType (..) )
 import Pretty (pretty)
@@ -87,7 +87,7 @@ makeBifFromBinOp name op =
     LValBif $ (\p -> Right . LValBif . p) $
       \a' b' -> case (corresback a', corresback b') of
         (Just a'', Just b'') -> Right $ cV $ op a'' b''
-        _ -> Left $ LErr $ "bin op " ++ name ++ " type error." ++ expected ++ actual
+        _ -> Left $ LBug $ "bin op " ++ name ++ " type error." ++ expected ++ actual
           where
             expected = " expected types: " ++ pretty (aTy, bTy)
             actual = " actual expressions: " ++ pretty (a', b')

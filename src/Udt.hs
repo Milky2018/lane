@@ -21,7 +21,7 @@ initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
     addDef :: (TEnv, UDT) -> MTStmt -> LResult (TEnv, UDT)
     addDef (env, udt) (TLExp name mty _expr) = case mty of 
       Just ty -> return (extendEnv name ty env, udt)
-      Nothing -> Left $ LErr "Top level expressions need type annotations"
+      Nothing -> Left $ LTopLevelDefNoAnnotation name 
 
     addDef (env, udt) (TLEnum name variants) = do 
       let udt' = name : udt 
@@ -29,25 +29,8 @@ initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
       variants' <- mapM (\(variantName, tys) -> do
         tys' <- mapM (\mty -> case mty of
           Just ty' -> Right ty'
-          Nothing -> Left $ LErr "Enum variants need type annotations") tys
+          Nothing -> Left $ LBug "Enum variants need type annotations") tys
         return (variantName, tys')) variants
       let addVariant env' (varName, tys) = extendEnv varName (foldl (flip LTLam) ty tys) env'
       let env' = foldl addVariant env variants'
       return (env', udt')
-    -- addDef (env, udt) (TLExp name (Just ty) _expr) = 
-    --   let tyv = lookupUdt ty udt 
-    --   in return (extendEnv name tyv env, udt)
-    -- addDef _ (TLExp _name Nothing _expr) =
-    --   Left $ LErr "Top level expressions need type annotations"
-    -- addDef (env, udt) (TLEnum name variants) = do 
-    --   let udt' = extendEnv name (TVPlaceholder name) udt 
-    --   variants' <- mapM (\(variantName, tys) -> do
-    --     tys' <- mapM (\ty -> case ty of
-    --       Just ty' -> Right (lookupUdt ty' udt')
-    --       Nothing -> Left $ LErr "Enum variants need type annotations") tys
-    --     return (variantName, tys')) variants
-    --   let tyv = TVEnum name variants'
-    --   let addVariant env' (varName, tys) = extendEnv varName (foldl (flip TVLam) tyv tys) env'
-    --   let udt'' = extendEnv name tyv udt 
-    --   let env' = foldl addVariant env variants'
-    --   return (env', udt'')
