@@ -2,8 +2,8 @@
 {-# HLINT ignore "Use lambda-case" #-}
 module Udt (initialTEnv) where
 
-import Ty (UDT, lookupUdt, LTypeVal (..))
-import TAST (MTProg, TVEnv, MTStmt)
+import Ty (UDT, LType(..))
+import TAST (MTProg, TEnv, MTStmt)
 import Err (LResult, LErr (..))
 import AST (TLStmt(..), Prog (..))
 import Data.Foldable (foldlM)
@@ -15,44 +15,39 @@ import Env (extendEnv)
 -- Usage: initialTEnv [exp1, func1, struct1] [+', -', *'] [Int', String', Bool'] =>
 --        ( [+', -', *', exp1', func1']
 --          [Int', String', Bool', struct1'] )
-initialTEnv :: MTProg -> TVEnv -> UDT -> LResult (TVEnv, UDT)
+initialTEnv :: MTProg -> TEnv -> UDT -> LResult (TEnv, UDT)
 initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
   where
-    addDef :: (TVEnv, UDT) -> MTStmt -> LResult (TVEnv, UDT)
-    addDef (env, udt) (TLExp name (Just ty) _expr) = 
-      let tyv = lookupUdt ty udt 
-      in return (extendEnv name tyv env, udt)
-    addDef _ (TLExp _name Nothing _expr) =
-      Left $ LErr "Top level expressions need type annotations"
-    -- TODO: add support for recursive types
-    addDef (env, udt) (TLStruct struct fields) = do
-      fieldTypes <- mapM (\(name, ty) -> case ty of
-        Just ty' -> Right (name, lookupUdt ty' udt)
-        Nothing -> Left $ LErr "Struct fields need type annotations") fields
-      -- return (extendEnv struct (TVStruct struct fieldTypes) env, extendEnv struct (TVStruct struct fieldTypes) udt)
-      return (env, extendEnv struct (TVStruct struct fieldTypes) udt)
-    -- addDef (env, udt) (TLEnum name variants) = do 
-    --   variantTypes <- mapM (\(variantName, tys) -> do
-    --     tys' <- mapM (\ty -> case ty of
-    --       Just ty' -> Right (lookupUdt ty' udt)
-    --       Nothing -> Left $ LErr "Enum variants need type annotations") tys
-    --     return (variantName, tys')) variants
-    --   return (env, extendEnv name (TVEnum name variantTypes) udt)
-    -- addDef (env, udt) (TLEnum name variants) = do 
-    --   variantTypes <- mapM (\(variantName, tys) -> do
-    --     tys' <- mapM (\ty -> case ty of
-    --       Just ty' -> Right (lookupUdt ty' udt)
-    --       Nothing -> Left $ LErr "Enum variants need type annotations") tys
-    --     return (variantName, tys')) variants
-    --   return (env, extendEnv name (TVEnum name variantTypes) udt)
+    addDef :: (TEnv, UDT) -> MTStmt -> LResult (TEnv, UDT)
+    addDef (env, udt) (TLExp name mty _expr) = case mty of 
+      Just ty -> return (extendEnv name ty env, udt)
+      Nothing -> Left $ LErr "Top level expressions need type annotations"
+
     addDef (env, udt) (TLEnum name variants) = do 
+      let udt' = name : udt 
+      let ty = LTId name 
       variants' <- mapM (\(variantName, tys) -> do
-        tys' <- mapM (\ty -> case ty of
-          Just ty' -> Right (lookupUdt ty' udt)
+        tys' <- mapM (\mty -> case mty of
+          Just ty' -> Right ty'
           Nothing -> Left $ LErr "Enum variants need type annotations") tys
         return (variantName, tys')) variants
-      let tyv = TVEnum name variants'
-      let addVariant env' (varName, tys) = extendEnv varName (foldl (flip TVLam) tyv tys) env'
+      let addVariant env' (varName, tys) = extendEnv varName (foldl (flip LTLam) ty tys) env'
       let env' = foldl addVariant env variants'
-      let udt' = extendEnv name tyv udt 
       return (env', udt')
+    -- addDef (env, udt) (TLExp name (Just ty) _expr) = 
+    --   let tyv = lookupUdt ty udt 
+    --   in return (extendEnv name tyv env, udt)
+    -- addDef _ (TLExp _name Nothing _expr) =
+    --   Left $ LErr "Top level expressions need type annotations"
+    -- addDef (env, udt) (TLEnum name variants) = do 
+    --   let udt' = extendEnv name (TVPlaceholder name) udt 
+    --   variants' <- mapM (\(variantName, tys) -> do
+    --     tys' <- mapM (\ty -> case ty of
+    --       Just ty' -> Right (lookupUdt ty' udt')
+    --       Nothing -> Left $ LErr "Enum variants need type annotations") tys
+    --     return (variantName, tys')) variants
+    --   let tyv = TVEnum name variants'
+    --   let addVariant env' (varName, tys) = extendEnv varName (foldl (flip TVLam) tyv tys) env'
+    --   let udt'' = extendEnv name tyv udt 
+    --   let env' = foldl addVariant env variants'
+    --   return (env', udt'')

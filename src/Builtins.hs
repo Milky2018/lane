@@ -1,14 +1,14 @@
-module Builtins (NamedBi (..), addBuiltins, addTBuiltins) where
+module Builtins (NamedBi (..), addBuiltins, addTBuiltins, boolType, unitType, intType, stringType) where
 
 import Val ( VEnv, LVal(..) )
 import AST ()
 import Err ( LErr(LErr) )
 import Env ( extendEnv )
-import Ty ( LTypeVal (..) )
-import TAST ( TVEnv )
+import Ty ( LType (..) )
 import Pretty (pretty)
+import qualified TAST
 
-data NamedBi = NamedBi String LTypeVal LVal 
+data NamedBi = NamedBi String LType LVal 
 
 -- Add a builtin function to a value environment. For example, function "+" in 
 -- Lane is added to the value environment as a function in the interpreter 
@@ -24,11 +24,23 @@ addBuiltins env = foldr addBuiltin env builtins
 
 -- Add a builtin function to a type environment. For example, function "+" in 
 -- Lane is added to the type environment with type Int -> Int -> Int. 
-addTBuiltin :: NamedBi -> TAST.TVEnv -> TAST.TVEnv
+addTBuiltin :: NamedBi -> TAST.TEnv -> TAST.TEnv
 addTBuiltin (NamedBi name ty _) = extendEnv name ty
 
-addTBuiltins :: TAST.TVEnv -> TAST.TVEnv
+addTBuiltins :: TAST.TEnv -> TAST.TEnv
 addTBuiltins env = foldr addTBuiltin env builtins
+
+boolType :: LType
+boolType = LTId "Bool"
+
+unitType :: LType
+unitType = LTId "Unit"
+
+intType :: LType
+intType = LTId "Int"
+
+stringType :: LType 
+stringType = LTId "String"
 
 builtins :: [NamedBi]
 builtins =
@@ -43,23 +55,23 @@ builtins =
   -- TODO: support Eq a => a -> a -> Bool 
   , makeBifFromBinOp "==" ((==) :: Int -> Int -> Bool)
   , makeBifFromBinOp "!=" ((/=) :: Int -> Int -> Bool)
-  , NamedBi "true" TVBool (LValBool True)
-  , NamedBi "false" TVBool (LValBool False)
-  , NamedBi "unit" TVUnit LValUnit
+  , NamedBi "true" boolType (LValBool True)
+  , NamedBi "false" boolType (LValBool False)
+  , NamedBi "unit" unitType LValUnit
   ]
 
 class CorrespondLValCons a where
-  correspond :: (a -> LVal, LTypeVal)
+  correspond :: (a -> LVal, LType)
   corresback :: LVal -> Maybe a
 
 instance CorrespondLValCons Int where
-  correspond = (LValInt, TVInt)
+  correspond = (LValInt, intType)
 
   corresback (LValInt i) = Just i
   corresback _ = Nothing
 
 instance CorrespondLValCons Bool where
-  correspond = (LValBool, TVBool)
+  correspond = (LValBool, boolType)
 
   corresback (LValBool b) = Just b
   corresback _ = Nothing
@@ -71,7 +83,7 @@ makeBifFromBinOp name op =
   let (_aV, aTy) = correspond @a
       (_bV, bTy) = correspond @b 
       (cV, cTy) = correspond
-  in NamedBi name (TVLam aTy (TVLam bTy cTy)) $
+  in NamedBi name (LTLam aTy (LTLam bTy cTy)) $
     LValBif $ (\p -> Right . LValBif . p) $
       \a' b' -> case (corresback a', corresback b') of
         (Just a'', Just b'') -> Right $ cV $ op a'' b''

@@ -87,7 +87,6 @@ pTLStmt =
   choice
     [ try pTLExp,
       try pTLFunc,
-      try pTLStruct,
       pTLEnum
     ]
     <?> "top level statement"
@@ -115,13 +114,6 @@ pTLFunc = do
   body <- pExpr
   return $ RTLFunc name args body t
 
-pTLStruct :: Parser RTLStmt
-pTLStruct = do
-  _ <- pReserved resStruct
-  structName <- pIdentifier
-  fields <- pBraces (sepBy pTypedName (pReserved resComma))
-  return $ RTLStruct structName fields
-
 pTLEnum :: Parser RTLStmt 
 pTLEnum = do 
   _ <- pReserved resEnum 
@@ -142,9 +134,7 @@ pExpr =
 
 pExpr' = try pApp <|> pExpr'' <?> "expression"
 
-pExpr'' = try pAccess <|> pExpr''' <?> "expression"
-
-pExpr''' = pParens pExpr <|> pAtom <?> "expression"
+pExpr'' = pParens pExpr <|> pAtom <?> "expression"
 
 pApp :: Parser RExpr
 pApp = do
@@ -158,24 +148,13 @@ pAtom =
       try pLetrec,
       try pIf,
       try pLam,
-      try pStructCons,
       pInt,
       pString,
       pId
     ]
     <?> "atom"
 
-pAccess = do
-  e <- pExpr'''
-  accessors <- many1 (pReservedOp resDot >> pIdentifier)
-  return $ foldl REAccess e accessors
-
 pInt = natural lexer >>= \i -> return $ REInt (fromIntegral i)
-
-pStructCons = do
-  structName <- pIdentifier
-  fields <- pBraces (sepBy pField (pReserved resComma))
-  return $ REStructCons structName fields
 
 pField = do
   fieldName <- pIdentifier
@@ -272,7 +251,6 @@ laneReservedNames =
     resElse,
     resLam,
     resDef,
-    resStruct,
     resEnum
   ]
 
@@ -348,7 +326,6 @@ resComma = ","
 
 resDot = "."
 
-resStruct = "struct"
 resEnum = "enum"
 
 opTable =

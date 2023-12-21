@@ -1,10 +1,10 @@
 module Err (LErr (..), LResult, reportErr) where 
-import Ty ( pretty, LTypeVal )
-import TAST (TVExpr)
+import Ty ( pretty, LType )
+import TAST (MTExpr)
 
 data LErr = 
     LErr String 
-  | LTErr TVExpr LTypeVal LTypeVal 
+  | LTErr MTExpr LType LType
   | LTFiledNotFound String
   | LBug String 
   | LMultiErr [LErr]

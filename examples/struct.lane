@@ -1,9 +1,0 @@
-struct Person {
-  name : String,
-  age : Int
-}
-
-def main : Int = 
-  let p1 : Person = Person { name = "Tom", age = 18 }
-    , p2 = Person { name = "Tim", age = 20 }
-  in p1.age - p2.age 
