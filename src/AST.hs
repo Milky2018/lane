@@ -1,4 +1,4 @@
-module AST (Expr (..), LExpr, TLStmt (..), Prog (..), LTLStmt, LProg, transProg) where
+module AST (Expr (..), LExpr, TLStmt (..), Prog (..), LTLStmt, LProg, transProg, EBranch (..)) where
 
 import qualified Data.Bifunctor
 import Data.List (intercalate)
@@ -19,7 +19,10 @@ data Expr t
   | ELam String t (Expr t) t
   | ELetrec [(String, t, Expr t)] (Expr t)
   | EIf (Expr t) (Expr t) (Expr t)
+  | EMatch (Expr t) [EBranch t]
   deriving (Eq, Show)
+
+data EBranch t = EBranch String [String] (Expr t) deriving (Eq, Show)
 
 type LProg = Prog ()
 
@@ -42,6 +45,10 @@ transExpr f (EApp e1 e2) = EApp (transExpr f e1) (transExpr f e2)
 transExpr f (ELam name ty body retTy) = ELam name (f ty) (transExpr f body) (f retTy)
 transExpr f (ELetrec bindings body) = ELetrec (map (\(name, ty, expr) -> (name, f ty, transExpr f expr)) bindings) (transExpr f body)
 transExpr f (EIf e1 e2 e3) = EIf (transExpr f e1) (transExpr f e2) (transExpr f e3)
+transExpr f (EMatch e branches) = EMatch (transExpr f e) (map (transBranch f) branches)
+
+transBranch :: (a -> b) -> EBranch a -> EBranch b
+transBranch f (EBranch cons pats body) = EBranch cons pats (transExpr f body)
 
 instance (Pretty t) => Pretty (Expr t) where
   pretty = prettyExpr
@@ -67,3 +74,5 @@ prettyExpr (EApp e1 e2) = "(" ++ prettyExpr e1 ++ " " ++ prettyExpr e2 ++ ")"
 prettyExpr (ELam arg argT body _) = "(\\" ++ "(" ++ arg ++ " : " ++ pretty argT ++ ") -> " ++ prettyExpr body ++ ")"
 prettyExpr (ELetrec bindings body) = "letrec " ++ intercalate ", " (map (\(name, t, expr) -> name ++ " : " ++ pretty t ++ " = " ++ prettyExpr expr) bindings) ++ " in " ++ prettyExpr body
 prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"
+prettyExpr (EMatch e0 branches) = "match " ++ prettyExpr e0 ++ " { " ++ intercalate ", " (map prettyBranch branches) ++ " }"
+  where prettyBranch (EBranch cons args body) = cons ++ " " ++ unwords args ++ " => " ++ prettyExpr body

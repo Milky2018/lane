@@ -4,8 +4,8 @@
 module Eval (runProg, FinalVal (..)) where
 
 import AST
-    ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..) )
-import Err ( LResult, LErr(LBug), reportErr )
+    ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..), EBranch (..) )
+import Err ( LResult, LErr(LBug, LNoPatternMatched), reportErr )
 import Val ( VEnv, LVal(..) )
 import Builtins ( addBuiltins )
 import Env ( emptyEnv, lookupEnv, extendEnv )
@@ -36,13 +36,15 @@ createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
 
         val :: String -> [()] -> LVal 
         val name [] = LValEnum enum name []
-        val name [()] = LValBif (\x -> return $ LValEnum enum name [x])
-        val name us = foldl f (LValEnum enum name []) us 
+        val name (():xs) = LValBif $ \x -> return $ prepend x (val name xs)
         
-        f :: LVal -> () -> LVal
-        f (LValEnum enum' name xs) () = LValBif (\x -> return $ LValEnum enum' name (x:xs))
-        f _ _ = error "impossible"
-        -- val name (f:fs) = LValLam f (EApp (EId name) (EId f)) (extendEnv f (val f fs) env')
+        prepend :: LVal -> LVal -> LVal 
+        prepend x (LValEnum enum' name xs) = LValEnum enum' name (x:xs)
+        prepend x (LValBif f) = LValBif $ \y -> do 
+          v <- f y
+          return $ prepend x v
+        prepend _ _ = error "impossible"
+
     newEnv = createInitialEnv (Prog defs) oldEnv
 
 evalTopLevelExpr :: VEnv -> LExpr -> LVal
@@ -96,3 +98,31 @@ eval (EIf cond b1 b2) env = do
   case v1 of
     LValBool b -> if b then eval b1 env else eval b2 env
     _ -> Left (LBug "not a boolean")
+eval e@(EMatch e0 branches) env = do
+  v0 <- eval e0 env 
+  case v0 of 
+    LValEnum enumName variantName fields -> evalMatch variantName fields branches 
+    _ -> Left $ LBug "not a variant"
+  where 
+    evalMatch :: String -> [LVal] -> [EBranch ()] -> LResult LVal
+    evalMatch var fields [] = Left $ LNoPatternMatched e
+    evalMatch var fields (EBranch patCons patVars body : rest) = 
+      if matchPattern patCons var 
+      then eval body (foldl (\env' (arg, field) -> extendEnv arg field env') env (zip patVars fields))
+      else evalMatch var fields rest
+
+    matchPattern :: String -> String -> Bool 
+    matchPattern patCons valCons = patCons == valCons || patCons == "_"
+  -- v <- eval e env
+  -- case v of
+  --   LValEnum enumName variantName fields -> case lookupEnv variantName env of
+  --     Nothing -> Left $ LBug $ "unbound variant: " ++ variantName
+  --     Just (LValEnum _ _ fields') -> do
+  --       let newEnv = foldl (\env' (field, field') -> extendEnv field field' env') env (zip fields fields')
+  --       case lookupEnv variantName newEnv of
+  --         Nothing -> Left $ LBug $ "unbound variant: " ++ variantName
+  --         Just (LValBif bif) -> bif v
+  --         Just (LValLam arg body env'') -> eval body newEnv
+  --         _ -> Left $ LBug $ "not a function: " ++ variantName
+  --     Just _ -> Left $ LBug $ "not a variant: " ++ variantName
+  --   _ -> Left $ LBug "not a variant"

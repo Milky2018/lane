@@ -24,3 +24,4 @@ main = hspec $ do
       checkExample "examples/enum.lane" (FinalVal (LValEnum "MyBool" "myTrue" []))
       checkExample "examples/enumargs.lane" (FinalVal (LValEnum "OptionInt" "some" [LValInt 1]))
       checkExample "examples/nat.lane" (FinalVal (LValEnum "Nat" "suc" [LValEnum "Nat" "suc" [LValEnum "Nat" "zero" []]]))
+      checkExample "examples/cal.lane" (FinalVal (LValInt (-4)))

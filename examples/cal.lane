@@ -1,11 +1,13 @@
 enum Expr {
     lit[Int], 
-    add[Expr, Expr]
+    add[Expr, Expr],
+    sub[Expr, Expr]
 }
 
 def eval (expr : Expr) : Int = match expr {
     lit n => n,
-    add e1 e2 => eval(e1) + eval(e2)
+    add e1 e2 => eval(e1) + eval(e2),
+    sub e1 e2 => eval(e1) - eval(e2)
 }
 
-def main : Int = eval (add (lit 1) (add (lit 2) (lit 3)))
+def main : Int = eval (sub (lit 1) (add (lit 2) (lit 3)))

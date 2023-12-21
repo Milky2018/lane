@@ -2,7 +2,7 @@
 {-# HLINT ignore "Replace case with fromMaybe" #-}
 {-# HLINT ignore "Eta reduce" #-}
 module TC (typeCheck, elimTypeProg) where
-import AST ( Expr(..), LProg, Prog (..), TLStmt (..), transProg )
+import AST ( Expr(..), LProg, Prog (..), TLStmt (..), transProg, EBranch (..))
 import Builtins ( addTBuiltins, stringType, boolType, intType )
 import Env ( emptyEnv, lookupEnv, extendEnv )
 import Err ( LResult, LErr(..) )
@@ -114,3 +114,27 @@ tc (EIf e1 e2 e3) t env udt = do
   t2 <- tc e2 t env udt
   t3 <- tc e3 t env udt
   if t2 == t3 then return t2 else Left $ LTErr (EIf e1 e2 e3) t2 t3
+
+tc (EMatch e0 branches) t env udt = do
+  t0 <- tc e0 Nothing env udt
+  branchTypes <- mapM (tcBranch t t0 env udt) branches
+  foldM
+    (\t1 t2 -> if t1 == t2 then return t1 else Left $ LBranchesHaveDifferentTypes t1 t2)
+    (head branchTypes)
+    branchTypes
+
+-- tcBranch (target type, e0 type, env, udt, branch)
+tcBranch :: Maybe LType -> LType -> TEnv -> UDT -> EBranch (Maybe LType) -> LResult LType
+tcBranch t t0 env udt (EBranch cons args body) = do
+  consType <- case lookupEnv cons env of
+    Just ty -> return ty
+    Nothing -> Left $ LConstructorNotInScope cons
+  env' <- case addBinding consType args env of 
+    Just e -> return e 
+    Nothing -> Left $ LPatternHasWrongNumberOfArguments cons args 
+  tc body t env' udt
+  where 
+    addBinding :: LType -> [String] -> TEnv -> Maybe TEnv 
+    addBinding ty [] env' | ty == t0 = return env'
+    addBinding (LTLam t1 t2) (arg:args') env' = addBinding t2 args' (extendEnv arg t1 env')
+    addBinding _ _ _ = Nothing 

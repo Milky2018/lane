@@ -9,7 +9,7 @@ module Parser
 where
 
 import Control.Monad (void)
-import Raw (RExpr (..), RProg (..), RTLStmt (..), RType (..), TypedName (..))
+import Raw (RExpr (..), RProg (..), RTLStmt (..), RType (..), TypedName (..), RBranch (..))
 import Text.Parsec
 import Text.Parsec.Expr
 import Text.Parsec.Language (LanguageDef)
@@ -148,6 +148,7 @@ pAtom =
       try pLetrec,
       try pIf,
       try pLam,
+      try pMatch, 
       pInt,
       pString,
       pId
@@ -242,6 +243,19 @@ pIf = do
   e2 <- pExpr
   return $ REIf cond e1 e2
 
+pMatch = do 
+  _ <- pReserved resMatch 
+  e0 <- pExpr 
+  branches <- pBraces (sepBy pBranch (pReserved resComma))
+  return $ REMatch e0 branches
+
+pBranch = do 
+  cons <- pIdentifier 
+  args <- many pIdentifier
+  _ <- pReserved resFat 
+  body <- pExpr 
+  return $ RBranch cons args body
+    
 laneReservedNames =
   [ resLet,
     resLetrec,
@@ -251,7 +265,8 @@ laneReservedNames =
     resElse,
     resLam,
     resDef,
-    resEnum
+    resEnum,
+    resMatch
   ]
 
 laneReservedOps =
@@ -327,6 +342,8 @@ resComma = ","
 resDot = "."
 
 resEnum = "enum"
+
+resMatch = "match"
 
 opTable =
   [ infixLeftOps [resEq, resNeq, resLt, resGt, resLeq, resGeq],

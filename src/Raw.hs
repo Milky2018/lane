@@ -1,11 +1,13 @@
-module Raw (RExpr (..), RType (..), trans, RProg (..), TypedName (..), RTLStmt (..)) where
+module Raw (RExpr (..), RType (..), trans, RProg (..), TypedName (..), RTLStmt (..), RBranch (..)) where
 
 import AST
-  ( Expr (..), Prog (..), TLStmt (..),
+  ( Expr (..),
+    Prog (..),
+    TLStmt (..), EBranch (..),
   )
+import qualified Data.Bifunctor
 import TAST (MTProg, MTStmt)
 import Ty (LType (..))
-import qualified Data.Bifunctor
 
 -- newtype RProg = RProg RExpr deriving (Show, Eq)
 newtype RProg = RProg [RTLStmt] deriving (Show, Eq)
@@ -25,7 +27,10 @@ data RExpr
   | REBin String RExpr RExpr -- expr + expr
   | RELam [TypedName] RExpr (Maybe RType) -- fn (x1 : t1) (x2 : t2) ... \=> expr
   | REIf RExpr RExpr RExpr -- if expr then expr else expr
+  | REMatch RExpr [RBranch] -- match expr { C1 x1 x2 ... \=> expr, C2 x1 x2 ... \=> expr, ... }
   deriving (Show, Eq)
+
+data RBranch = RBranch String [String] RExpr deriving (Show, Eq)
 
 data RType
   = RTFunc RType RType
@@ -55,7 +60,7 @@ trans (RProg re) = Prog (map transTLStmt re)
 
     combineTypes :: [Maybe RType] -> Maybe RType -> Maybe RType
     combineTypes [] rt = rt
-    combineTypes (x:xs) rt = do
+    combineTypes (x : xs) rt = do
       x' <- x
       xs' <- combineTypes xs rt
       pure $ RTFunc x' xs'
@@ -67,14 +72,16 @@ trans (RProg re) = Prog (map transTLStmt re)
     -- (fn (x1 : t1) : ? => fn (x2 : t2) : ? => expr) e1 e2
     transExpr (RELet bindings e) = case bindings of
       [] -> error "compiler error: RELet with empty let clause"
-      [(TypedName var ty, body)] -> EApp
-        (ELam var (fmap transType ty) (transExpr e) Nothing)
-        (transExpr body)
-      ((TypedName var ty, body) : rest) -> EApp
-        (ELam var (fmap transType ty) (transExpr (RELet rest e)) Nothing)
-        (transExpr body)
-    -- letrec f1 : t1 = e1, f2 : t2 = e2 in expr 
-    -- letrec f1 : t1 = e1, f2 : t2 = e2 in expr 
+      [(TypedName var ty, body)] ->
+        EApp
+          (ELam var (fmap transType ty) (transExpr e) Nothing)
+          (transExpr body)
+      ((TypedName var ty, body) : rest) ->
+        EApp
+          (ELam var (fmap transType ty) (transExpr (RELet rest e)) Nothing)
+          (transExpr body)
+    -- letrec f1 : t1 = e1, f2 : t2 = e2 in expr
+    -- letrec f1 : t1 = e1, f2 : t2 = e2 in expr
     transExpr (RELetrec bindings e) =
       ELetrec (fmap (\(TypedName name ty, body) -> (name, fmap transType ty, transExpr body)) bindings) (transExpr e)
     -- e1 + e2
@@ -88,6 +95,10 @@ trans (RProg re) = Prog (map transTLStmt re)
       [TypedName var ty] -> ELam var (fmap transType ty) (transExpr e) (transType <$> retT)
       (TypedName var ty) : rest -> ELam var (fmap transType ty) (transExpr (RELam rest e Nothing)) (transType <$> Nothing)
     transExpr (REIf cond b1 b2) = EIf (transExpr cond) (transExpr b1) (transExpr b2)
+    -- match e0 { pat1 => e1, pat2 => e2 }
+    transExpr (REMatch e0 branches) = EMatch (transExpr e0) (map transBranch branches)
 
     transType (RTFunc t1 t2) = LTLam (transType t1) (transType t2)
     transType (RTId i) = LTId i
+
+    transBranch (RBranch cons args body) = EBranch cons args (transExpr body)
