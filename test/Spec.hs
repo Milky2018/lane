@@ -5,6 +5,7 @@ import Test.Hspec
 import Eval (FinalVal (..))
 import Interpreter (lanei)
 import Val (LVal(..))
+import Builtins (trueVal)
 
 checkExample :: String -> FinalVal -> SpecWith ()
 checkExample path expectedVal = it path $ do
@@ -15,12 +16,12 @@ main :: IO ()
 main = hspec $ do 
     describe "eval" $ do
       checkExample "examples/fact.lane" (FinalVal (LValInt 120))
-      checkExample "examples/oddeven.lane" (FinalVal (LValBool True))
+      checkExample "examples/oddeven.lane" (FinalVal trueVal)
       checkExample "examples/lambda.lane" (FinalVal (LValInt 2))
       checkExample "examples/hello.lane" (FinalVal (LValString "Hello World"))
       checkExample "examples/moreargs.lane" (FinalVal (LValInt 2))
       checkExample "examples/letrec.lane" (FinalVal (LValInt 120))
-      checkExample "examples/multiletrec.lane" (FinalVal (LValBool True))
+      checkExample "examples/multiletrec.lane" (FinalVal trueVal)
       checkExample "examples/enum.lane" (FinalVal (LValEnum "MyBool" "myTrue" []))
       checkExample "examples/enumargs.lane" (FinalVal (LValEnum "OptionInt" "some" [LValInt 1]))
       checkExample "examples/nat.lane" (FinalVal (LValEnum "Nat" "suc" [LValEnum "Nat" "suc" [LValEnum "Nat" "zero" []]]))

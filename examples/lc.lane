@@ -1,0 +1,41 @@
+enum Expr {
+    lit[Int],
+    id[String],
+    lam[String, Expr],
+    app[Expr, Expr]
+}
+
+enum Env {
+    empty[], 
+    extend[String, Val, Env]
+}
+
+enum Val {
+    intVal[Int], 
+    lamVal[String, Expr, Env], 
+    noneVal[]
+}
+
+def lookup (id : String) (env : Env) : Val = match env {
+    empty => noneVal,
+    extend i v e => if eq i id then v else lookup id e 
+}
+
+def eval (e : Expr) (env : Env) : Val = match e {
+    lit n => intVal n, 
+    id i => lookup i env,
+    lam arg body => lamVal arg body env, 
+    app operator operand => 
+        match eval operator env {
+            lamVal arg body env1 => 
+                let v = eval operand env 
+                in eval body (extend arg v env1)
+            , 
+            intVal n => noneVal, 
+            noneVal => noneVal
+        }
+}
+
+def example : Expr = app (app (lam "x" (lam "y" (app (id "x") (id "y")))) (lam "x" (id "x"))) (lit 10)
+
+def main : Val = eval example empty 

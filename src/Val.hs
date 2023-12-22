@@ -8,10 +8,8 @@ import Env
 import Data.List (intercalate)
 import Pretty (Pretty (pretty))
 
-data LVal =
-    LValBool Bool
-  | LValInt Int
-  | LValUnit
+data LVal 
+  = LValInt Int
   | LValString String
   | LValLam String LExpr VEnv
   | LValBif LBif
@@ -19,9 +17,7 @@ data LVal =
   | LValEnum String String [LVal]
 
 instance Pretty LVal where
-  pretty (LValBool b) = show b
   pretty (LValInt i) = show i
-  pretty LValUnit = "()"
   pretty (LValString s) = s
   pretty (LValLam _ _ _) = "<lambda>"
   pretty (LValBif _) = "<builtin>"
@@ -34,9 +30,7 @@ type VEnv = Env String LVal
 type LBif = LVal -> LResult LVal
 
 instance Eq LVal where
-  (LValBool b1) == (LValBool b2) = b1 == b2
   (LValInt i1) == (LValInt i2) = i1 == i2
-  LValUnit == LValUnit = True
   (LValString s1) == (LValString s2) = s1 == s2
   (LValLam _ _ _) == (LValLam _ _ _) = False
   (LValBif _) == (LValBif _) = False

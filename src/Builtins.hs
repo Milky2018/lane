@@ -1,4 +1,5 @@
-module Builtins (NamedBi (..), addBuiltins, addTBuiltins, boolType, unitType, intType, stringType) where
+{-# LANGUAGE LambdaCase #-}
+module Builtins (NamedBi (..), addBuiltins, addTBuiltins, boolType, unitType, intType, stringType, trueVal, falseVal) where
 
 import Val ( VEnv, LVal(..) )
 import AST ()
@@ -8,7 +9,7 @@ import Ty ( LType (..) )
 import Pretty (pretty)
 import qualified TAST
 
-data NamedBi = NamedBi String LType LVal 
+data NamedBi = NamedBi String LType LVal
 
 -- Add a builtin function to a value environment. For example, function "+" in 
 -- Lane is added to the value environment as a function in the interpreter 
@@ -39,8 +40,14 @@ unitType = LTId "Unit"
 intType :: LType
 intType = LTId "Int"
 
-stringType :: LType 
+stringType :: LType
 stringType = LTId "String"
+
+trueVal :: LVal
+trueVal = LValEnum "Bool" "true" []
+
+falseVal :: LVal
+falseVal = LValEnum "Bool" "false" []
 
 builtins :: [NamedBi]
 builtins =
@@ -55,10 +62,16 @@ builtins =
   -- TODO: support Eq a => a -> a -> Bool 
   , makeBifFromBinOp "==" ((==) :: Int -> Int -> Bool)
   , makeBifFromBinOp "!=" ((/=) :: Int -> Int -> Bool)
-  , NamedBi "true" boolType (LValBool True)
-  , NamedBi "false" boolType (LValBool False)
-  , NamedBi "unit" unitType LValUnit
+  , NamedBi "true" boolType trueVal
+  , NamedBi "false" boolType falseVal
+  , stringEq
   ]
+
+stringEq :: NamedBi
+stringEq = NamedBi "eq" t v
+  where
+    t = LTLam stringType (LTLam stringType boolType)
+    v = LValBif $ \(LValString s1) -> return $ LValBif $ \(LValString s2) -> return $ if s1 == s2 then trueVal else falseVal
 
 class CorrespondLValCons a where
   correspond :: (a -> LVal, LType)
@@ -71,17 +84,17 @@ instance CorrespondLValCons Int where
   corresback _ = Nothing
 
 instance CorrespondLValCons Bool where
-  correspond = (LValBool, boolType)
-
-  corresback (LValBool b) = Just b
+  correspond = (\x -> (if x then trueVal else falseVal), boolType)
+  corresback (LValEnum "Bool" "true" []) = Just True
+  corresback (LValEnum "Bool" "false" []) = Just False
   corresback _ = Nothing
 
-makeBifFromBinOp :: forall a b c. 
-                    (CorrespondLValCons a, CorrespondLValCons b, CorrespondLValCons c) => 
+makeBifFromBinOp :: forall a b c.
+                    (CorrespondLValCons a, CorrespondLValCons b, CorrespondLValCons c) =>
                     String -> (a -> b -> c) -> NamedBi
-makeBifFromBinOp name op = 
+makeBifFromBinOp name op =
   let (_aV, aTy) = correspond @a
-      (_bV, bTy) = correspond @b 
+      (_bV, bTy) = correspond @b
       (cV, cTy) = correspond
   in NamedBi name (LTLam aTy (LTLam bTy cTy)) $
     LValBif $ (\p -> Right . LValBif . p) $

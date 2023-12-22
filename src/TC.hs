@@ -59,7 +59,7 @@ tc (EId x) t env _udt = case lookupEnv x env of
     Just t'' | t'' == t' -> return t'
     Just t'' -> Left $ LTErr (EId x) t'' t'
     Nothing -> return t'
-  Nothing -> Left $ LVariableNotInScope x 
+  Nothing -> Left $ LVariableNotInScope x
 
 tc (EApp e1 e2) t env udt = do
   t2 <- tc e2 Nothing env udt
@@ -77,7 +77,7 @@ tc (EApp e1 e2) t env udt = do
 tc (ELam x mt1 e mt2) Nothing env udt = do
   t1 <- case mt1 of
     Just t  -> return t
-    Nothing -> Left $ LFunctionArgumentTypeMissing x 
+    Nothing -> Left $ LFunctionArgumentTypeMissing x
   let env' = extendEnv x t1 env
   t2 <- tc e mt2 env' udt
   return (LTLam t1 t2)
@@ -125,16 +125,20 @@ tc (EMatch e0 branches) t env udt = do
 
 -- tcBranch (target type, e0 type, env, udt, branch)
 tcBranch :: Maybe LType -> LType -> TEnv -> UDT -> EBranch (Maybe LType) -> LResult LType
-tcBranch t t0 env udt (EBranch cons args body) = do
-  consType <- case lookupEnv cons env of
-    Just ty -> return ty
-    Nothing -> Left $ LConstructorNotInScope cons
-  env' <- case addBinding consType args env of 
-    Just e -> return e 
-    Nothing -> Left $ LPatternHasWrongNumberOfArguments cons args 
-  tc body t env' udt
-  where 
-    addBinding :: LType -> [String] -> TEnv -> Maybe TEnv 
+tcBranch t t0 env udt (EBranch cons args body) =
+  if cons == "_" && null args
+  then tc body t env udt
+  else do
+    consType <- case lookupEnv cons env of
+      Just ty -> return ty
+      Nothing -> Left $ LConstructorNotInScope cons
+    env' <- case addBinding consType args env of
+      Just e -> return e
+      Nothing -> Left $ LPatternHasWrongNumberOfArguments cons args
+    tc body t env' udt
+  where
+    addBinding :: LType -> [String] -> TEnv -> Maybe TEnv
     addBinding ty [] env' | ty == t0 = return env'
-    addBinding (LTLam t1 t2) (arg:args') env' = addBinding t2 args' (extendEnv arg t1 env')
-    addBinding _ _ _ = Nothing 
+    -- addBinding (LTLam t1 t2) (arg:args') env' = addBinding t2 args' (extendEnv arg t1 env')
+    addBinding (LTLam t1 t2) (arg:args') env' = extendEnv arg t1 <$> addBinding t2 args' env'
+    addBinding _ _ _ = Nothing

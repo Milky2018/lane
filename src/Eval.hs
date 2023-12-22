@@ -7,7 +7,7 @@ import AST
     ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..), EBranch (..) )
 import Err ( LResult, LErr(LBug, LNoPatternMatched), reportErr )
 import Val ( VEnv, LVal(..) )
-import Builtins ( addBuiltins )
+import Builtins ( addBuiltins, trueVal, falseVal )
 import Env ( emptyEnv, lookupEnv, extendEnv )
 import Pretty (pretty, Pretty)
 import Control.Monad.Fix (mfix)
@@ -95,9 +95,9 @@ eval (ELetrec bindings body) env = do
   eval body newEnv
 eval (EIf cond b1 b2) env = do
   v1 <- eval cond env
-  case v1 of
-    LValBool b -> if b then eval b1 env else eval b2 env
-    _ -> Left (LBug "not a boolean")
+  if v1 == trueVal then eval b1 env
+  else if v1 == falseVal then eval b2 env
+  else Left (LBug "not a boolean")
 eval e@(EMatch e0 branches) env = do
   v0 <- eval e0 env 
   case v0 of 

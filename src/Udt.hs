@@ -31,6 +31,6 @@ initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
           Just ty' -> Right ty'
           Nothing -> Left $ LBug "Enum variants need type annotations") tys
         return (variantName, tys')) variants
-      let addVariant env' (varName, tys) = extendEnv varName (foldl (flip LTLam) ty tys) env'
+      let addVariant env' (varName, tys) = extendEnv varName (foldr LTLam ty tys) env'
       let env' = foldl addVariant env variants'
       return (env', udt')
