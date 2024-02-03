@@ -139,6 +139,5 @@ tcBranch t t0 env udt (EBranch cons args body) =
   where
     addBinding :: LType -> [String] -> TEnv -> Maybe TEnv
     addBinding ty [] env' | ty == t0 = return env'
-    -- addBinding (LTLam t1 t2) (arg:args') env' = addBinding t2 args' (extendEnv arg t1 env')
     addBinding (LTLam t1 t2) (arg:args') env' = extendEnv arg t1 <$> addBinding t2 args' env'
     addBinding _ _ _ = Nothing

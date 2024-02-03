@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase #-}
+{-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
+
 module Builtins (NamedBi (..), addBuiltins, addTBuiltins, boolType, unitType, intType, stringType, trueVal, falseVal) where
 
 import Val ( VEnv, LVal(..) )
@@ -67,6 +68,7 @@ builtins =
   , stringEq
   ]
 
+-- TODO: this should be deleted when Eq a => a -> a -> Bool is supported.
 stringEq :: NamedBi
 stringEq = NamedBi "eq" t v
   where
