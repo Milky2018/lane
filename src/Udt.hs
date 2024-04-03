@@ -34,3 +34,4 @@ initialTEnv (Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
       let addVariant env' (varName, tys) = extendEnv varName (foldr LTLam ty tys) env'
       let env' = foldl addVariant env variants'
       return (env', udt')
+      

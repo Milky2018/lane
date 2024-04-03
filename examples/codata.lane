@@ -1,0 +1,18 @@
+enum Stream {
+    scons[Int, (Unit -> Stream)]
+}
+
+enum List {
+    nil[],
+    cons[Int, List]
+}
+
+def ones : Stream = scons 1 (fn (x : Unit) => ones)
+
+def take (n : Int) (s : Stream) : List =
+    if n == 0 then nil
+    else match s {
+        scons hd tl => cons hd (take (n - 1) (tl unit))
+    }
+
+def main : List = take 4 ones 

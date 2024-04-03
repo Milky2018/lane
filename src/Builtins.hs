@@ -50,6 +50,9 @@ trueVal = LValEnum "Bool" "true" []
 falseVal :: LVal
 falseVal = LValEnum "Bool" "false" []
 
+unitVal :: LVal
+unitVal = LValEnum "Unit" "unit" []
+
 builtins :: [NamedBi]
 builtins =
   [ makeBifFromBinOp "+" ((+) :: Int -> Int -> Int)
@@ -65,6 +68,7 @@ builtins =
   , makeBifFromBinOp "!=" ((/=) :: Int -> Int -> Bool)
   , NamedBi "true" boolType trueVal
   , NamedBi "false" boolType falseVal
+  , NamedBi "unit" unitType unitVal
   , stringEq
   ]
 
