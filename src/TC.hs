@@ -9,6 +9,7 @@ import Err ( LResult, LErr(..) )
 import TAST ( MTProg, TEnv, MTStmt, MTExpr )
 import Ty ( LType (..), LType, UDT )
 import Data.Maybe (fromMaybe, fromJust)
+import Data.List.NonEmpty (NonEmpty(..), map, head)
 import Builtintypes (addBuiltinTypes)
 import Udt (initialTEnv)
 import Control.Monad (foldM, foldM_)
@@ -31,10 +32,10 @@ tcProg :: MTProg -> TEnv -> UDT -> Maybe LErr
 tcProg (Prog stmts) env udt = tcStmts stmts env udt
 
 tcStmts :: [MTStmt] -> TEnv -> UDT -> Maybe LErr
-tcStmts ss env udt = let errors = map (\stmt -> tcStmt stmt env udt) ss in
+tcStmts ss env udt = let errors = Prelude.map (\stmt -> tcStmt stmt env udt) ss in
   case filter (/= Nothing) errors of
     [] -> Nothing
-    errs -> Just $ head $ map fromJust errs
+    (err:errs) -> Just $ LMultiErr (Data.List.NonEmpty.map fromJust (err :| errs))
 
 tcStmt :: MTStmt -> TEnv -> UDT -> Maybe LErr
 tcStmt (TLExp _name ty body) env udt =
@@ -120,7 +121,7 @@ tc (EMatch e0 branches) t env udt = do
   branchTypes <- mapM (tcBranch t t0 env udt) branches
   foldM
     (\t1 t2 -> if t1 == t2 then return t1 else Left $ LBranchesHaveDifferentTypes t1 t2)
-    (head branchTypes)
+    (Data.List.NonEmpty.head branchTypes)
     branchTypes
 
 -- tcBranch (target type, e0 type, env, udt, branch)

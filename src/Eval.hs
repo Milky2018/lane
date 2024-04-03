@@ -5,13 +5,15 @@ module Eval (runProg, FinalVal (..)) where
 
 import AST
     ( LExpr, Expr(..), LProg, Prog (..), TLStmt (..), EBranch (..) )
-import Err ( LResult, LErr(LBug, LNoPatternMatched), reportErr )
+import Err ( LResult, LErr(LBug, LNoPatternMatched) )
 import Val ( VEnv, LVal(..) )
 import Builtins ( addBuiltins, trueVal, falseVal )
 import Env ( emptyEnv, lookupEnv, extendEnv )
-import Pretty (pretty, Pretty)
 import Control.Monad.Fix (mfix)
 import Control.Monad (foldM)
+import Data.List.NonEmpty (toList)
+
+import Prettyprinter (Pretty, pretty)
 
 data FinalVal =
     FinalVal LVal
@@ -20,10 +22,10 @@ data FinalVal =
 
 instance Pretty FinalVal where
   pretty (FinalVal v) = pretty v 
-  pretty (FinalErr e) = e 
+  pretty (FinalErr e) = pretty e 
 
 instance Show FinalVal where 
-  show = pretty
+  show = show . pretty
 
 createInitialEnv :: LProg -> VEnv -> VEnv
 createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
@@ -50,14 +52,14 @@ createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
 evalTopLevelExpr :: VEnv -> LExpr -> LVal
 evalTopLevelExpr env expr = case eval expr env of
   Right value -> value
-  Left err    -> error $ "evalTopLevelDef: " ++ pretty expr ++ "\n" ++ reportErr err
+  Left err    -> error $ "evalTopLevelDef: " ++ show (pretty expr) ++ "\n" ++ show (pretty err)
 
 -- TODO: when IO is added, the main expression should be typed IO.
 runProg :: LProg -> FinalVal
 runProg prog =
   let env = createInitialEnv prog (addBuiltins emptyEnv)
   in case eval (EId "main") env of
-      Left err -> FinalErr $ reportErr err
+      Left err -> FinalErr $ show (pretty err)
       Right (LValLam _ _ _) -> FinalErr "lambda as main expression"
       Right (LValBif _) -> FinalErr "builtin function as main expression"
       Right v -> FinalVal v 
@@ -78,7 +80,7 @@ eval (EApp e1 e2) env = do
     LValBif bif -> do
       v2 <- eval e2 env
       bif v2
-    _ -> Left (LBug (pretty e1 ++ "not a function"))
+    _ -> Left (LBug (show (pretty e1) ++ "not a function"))
 eval (ELam arg _ body _) env = return $ LValLam arg body env
 -- eval (EFix arg _ body _) env = mfix $ \val -> do
 --   let newEnv = extendEnv arg val env
@@ -101,7 +103,7 @@ eval (EIf cond b1 b2) env = do
 eval e@(EMatch e0 branches) env = do
   v0 <- eval e0 env 
   case v0 of 
-    LValEnum enumName variantName fields -> evalMatch variantName fields branches 
+    LValEnum enumName variantName fields -> evalMatch variantName fields (toList branches)
     _ -> Left $ LBug "not a variant"
   where 
     evalMatch :: String -> [LVal] -> [EBranch ()] -> LResult LVal

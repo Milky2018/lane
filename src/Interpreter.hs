@@ -5,14 +5,14 @@ import Parser (parseLaneProg)
 import Eval ( FinalVal(..), runProg )
 import Raw (trans)
 import TC ( typeCheck, elimTypeProg )
-import Err (reportErr)
+import Err ( pretty )
 
 parseAndTrans :: String -> LProg
 parseAndTrans e = case parseLaneProg e of
   Left err -> error (show err)
   Right prog -> let mtprog = trans prog in case typeCheck mtprog of 
     Nothing -> elimTypeProg mtprog
-    Just err -> error (reportErr err)
+    Just err -> error (show (pretty err))
 
 lanei :: String -> FinalVal 
 lanei = runProg . parseAndTrans 

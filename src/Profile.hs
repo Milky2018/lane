@@ -2,10 +2,9 @@ module Profile (laneProfile) where
   
 import Parser (parseLaneProg)
 import Raw (trans)
-import Pretty ( pretty )
 import TC (typeCheck, elimTypeProg)
-import Err (reportErr)
 import Eval (runProg)
+import Prettyprinter (pretty)
 
 laneProfile :: String -> IO ()
 laneProfile progText = do
@@ -15,7 +14,7 @@ laneProfile progText = do
   let rawAst = case parseLaneProg progText of 
         Left err -> error (show err)
         Right ast -> ast
-  print rawAst
+  print $ pretty rawAst
   sepLine
   putStrLn "Translating Raw AST to MT AST:"
   let mtAst = trans rawAst 
@@ -24,7 +23,7 @@ laneProfile progText = do
   putStrLn "Type checking MT AST:"
   let lprog = case typeCheck mtAst of 
         Nothing -> elimTypeProg mtAst
-        Just err -> error (reportErr err)
+        Just err -> error (show (pretty err))
   print $ pretty lprog
   sepLine
   putStrLn "Evaluation, output final value:"

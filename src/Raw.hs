@@ -8,15 +8,27 @@ import AST
 import qualified Data.Bifunctor
 import TAST (MTProg, MTStmt)
 import Ty (LType (..))
+import Prettyprinter
+import Data.List.NonEmpty (NonEmpty(..))
 
--- newtype RProg = RProg RExpr deriving (Show, Eq)
-newtype RProg = RProg [RTLStmt] deriving (Show, Eq)
+newtype RProg = RProg [RTLStmt] deriving (Eq)
+
+instance Pretty RProg where
+  pretty (RProg stmts) = vsep (map pretty stmts)
 
 data RTLStmt
   = RTLFunc String [TypedName] RExpr (Maybe RType) -- def f (x1 : t1) (x2 : t2) ... = expr
   | RTLExp TypedName RExpr -- def x : t = expr
   | RTLEnum String [(String, [RType])] -- enum E { C1[t11, t12, ... ], C2[t21, t22, ... ], ... }
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Pretty RTLStmt where
+  pretty (RTLFunc name args body ty) =
+    pretty "def" <+> pretty name <+> hsep (map pretty args) <+> pretty "=" <+> pretty body <+> maybe mempty (\t -> pretty ":" <+> pretty t) ty
+  pretty (RTLExp (TypedName name ty) body) =
+    pretty "def" <+> pretty name <+> pretty ":" <+> pretty ty <+> pretty "=" <+> pretty body
+  pretty (RTLEnum name fields) =
+    pretty "enum" <+> pretty name <+> hsep (map pretty fields)
 
 data RExpr
   = REInt Int -- 1 | 2 | 3 | ...
@@ -28,16 +40,38 @@ data RExpr
   | RELam [TypedName] RExpr (Maybe RType) -- fn (x1 : t1) (x2 : t2) ... \=> expr
   | REIf RExpr RExpr RExpr -- if expr then expr else expr
   | REMatch RExpr [RBranch] -- match expr { C1 x1 x2 ... \=> expr, C2 x1 x2 ... \=> expr, ... }
-  deriving (Show, Eq)
+  deriving (Eq)
 
-data RBranch = RBranch String [String] RExpr deriving (Show, Eq)
+instance Pretty RExpr where 
+  pretty (REInt i) = pretty i
+  pretty (REString s) = pretty s
+  pretty (REId i) = pretty i
+  pretty (RELet bindings e) = pretty "let" <+> hsep (map (\(TypedName name ty, body) -> pretty name <+> pretty ":" <+> pretty ty <+> pretty "=" <+> pretty body) bindings) <+> pretty "in" <+> pretty e
+  pretty (RELetrec bindings e) = pretty "letrec" <+> hsep (map (\(TypedName name ty, body) -> pretty name <+> pretty ":" <+> pretty ty <+> pretty "=" <+> pretty body) bindings) <+> pretty "in" <+> pretty e
+  pretty (REBin " " e1 e2) = parens $ pretty e1 <+> pretty e2
+  pretty (REBin op e1 e2) = parens $ pretty e1 <+> pretty op <+> pretty e2
+  pretty (RELam args e retT) = parens $ pretty "\\" <> hsep (map pretty args) <+> pretty "->" <+> pretty e <+> maybe mempty (\t -> pretty ":" <+> pretty t) retT
+  pretty (REIf cond b1 b2) = pretty "if" <+> pretty cond <+> pretty "then" <+> pretty b1 <+> pretty "else" <+> pretty b2
+  pretty (REMatch e branches) = pretty "match" <+> pretty e <+> pretty "{" <+> hsep (punctuate comma (map pretty branches)) <+> pretty "}"
+
+data RBranch = RBranch String [String] RExpr deriving (Eq)
+
+instance Pretty RBranch where 
+  pretty (RBranch cons args body) = pretty cons <+> hsep (map pretty args) <+> pretty "=>" <+> pretty body
 
 data RType
   = RTFunc RType RType
   | RTId String
-  deriving (Show, Eq)
+  deriving (Eq)
 
-data TypedName = TypedName String (Maybe RType) deriving (Show, Eq)
+instance Pretty RType where 
+  pretty (RTFunc t1 t2) = parens $ pretty t1 <+> pretty "->" <+> pretty t2
+  pretty (RTId i) = pretty i
+
+data TypedName = TypedName String (Maybe RType) deriving (Eq)
+
+instance Pretty TypedName where 
+  pretty (TypedName name ty) = pretty name <+> maybe mempty (\t -> pretty ":" <+> pretty t) ty
 
 trans :: RProg -> MTProg
 trans (RProg re) = Prog (map transTLStmt re)
@@ -96,7 +130,8 @@ trans (RProg re) = Prog (map transTLStmt re)
       (TypedName var ty) : rest -> ELam var (fmap transType ty) (transExpr (RELam rest e Nothing)) (transType <$> Nothing)
     transExpr (REIf cond b1 b2) = EIf (transExpr cond) (transExpr b1) (transExpr b2)
     -- match e0 { pat1 => e1, pat2 => e2 }
-    transExpr (REMatch e0 branches) = EMatch (transExpr e0) (map transBranch branches)
+    transExpr (REMatch _e0 []) = error "compiler error: REMatch with empty branch list"
+    transExpr (REMatch e0 (b:bs)) = EMatch (transExpr e0) ((transBranch b) :| (map transBranch bs))
 
     transType (RTFunc t1 t2) = LTLam (transType t1) (transType t2)
     transType (RTId i) = LTId i

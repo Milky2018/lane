@@ -1,15 +1,16 @@
 module AST (Expr (..), LExpr, TLStmt (..), Prog (..), LTLStmt, LProg, transProg, EBranch (..)) where
 
 import qualified Data.Bifunctor
-import Data.List (intercalate)
-import Pretty (Pretty (pretty))
+import Prettyprinter
+import Data.List.NonEmpty (NonEmpty, toList)
+import qualified Data.List.NonEmpty (map)
 
-newtype Prog t = Prog [TLStmt t] deriving (Show, Eq)
+newtype Prog t = Prog [TLStmt t] deriving (Eq)
 
 data TLStmt t
   = TLExp String t (Expr t)
   | TLEnum String [(String, [t])]
-  deriving (Show, Eq)
+  deriving (Eq)
 
 data Expr t
   = EInt Int
@@ -19,10 +20,10 @@ data Expr t
   | ELam String t (Expr t) t
   | ELetrec [(String, t, Expr t)] (Expr t)
   | EIf (Expr t) (Expr t) (Expr t)
-  | EMatch (Expr t) [EBranch t]
-  deriving (Eq, Show)
+  | EMatch (Expr t) (NonEmpty (EBranch t))
+  deriving (Eq)
 
-data EBranch t = EBranch String [String] (Expr t) deriving (Eq, Show)
+data EBranch t = EBranch String [String] (Expr t) deriving (Eq)
 
 type LProg = Prog ()
 
@@ -45,34 +46,36 @@ transExpr f (EApp e1 e2) = EApp (transExpr f e1) (transExpr f e2)
 transExpr f (ELam name ty body retTy) = ELam name (f ty) (transExpr f body) (f retTy)
 transExpr f (ELetrec bindings body) = ELetrec (map (\(name, ty, expr) -> (name, f ty, transExpr f expr)) bindings) (transExpr f body)
 transExpr f (EIf e1 e2 e3) = EIf (transExpr f e1) (transExpr f e2) (transExpr f e3)
-transExpr f (EMatch e branches) = EMatch (transExpr f e) (map (transBranch f) branches)
+transExpr f (EMatch e branches) = EMatch (transExpr f e) (Data.List.NonEmpty.map (transBranch f) branches)
 
 transBranch :: (a -> b) -> EBranch a -> EBranch b
 transBranch f (EBranch cons pats body) = EBranch cons pats (transExpr f body)
 
 instance (Pretty t) => Pretty (Expr t) where
-  pretty = prettyExpr
+  pretty (EId i) = pretty i
+  pretty (EString s) = pretty s
+  pretty (EInt i) = pretty i
+  pretty (EApp e1 e2) = parens $ pretty e1 <+> pretty e2
+  pretty (ELam arg argT body _) = 
+    parens $ pretty "\\" <> parens (pretty arg <+> pretty ":" <+> pretty argT) <+> pretty "->" <+> pretty body
+  pretty (ELetrec bindings body) = 
+    align $ 
+      pretty "letrec" <+> 
+      align (vsep (map (\(name, t, expr) -> pretty name <+> pretty  ":" <+> pretty t <+> pretty "=" <+> pretty expr) bindings)) 
+      <> line 
+      <> pretty "in" 
+      <+> pretty body
+  pretty (EIf cond b1 b2) =
+    align $ vsep [pretty "if" <+> pretty cond, pretty "then" <+> pretty b1, pretty "else" <+> pretty b2]
+  pretty (EMatch e0 branches) =
+    pretty "match" <+> pretty e0 <+> pretty "{" <+> hsep (toList $ Data.List.NonEmpty.map prettyBranch branches) <+> pretty "}"
+    where prettyBranch (EBranch cons args body) = pretty cons <+> hsep (map pretty args) <+> pretty "=>" <+> pretty body
+
 
 instance (Pretty t) => Pretty (Prog t) where
-  pretty = prettyProg
+  pretty (Prog stmts) = vsep $ map pretty stmts
 
 instance (Pretty t) => Pretty (TLStmt t) where
-  pretty = prettyStmt
+  pretty (TLExp name _ body) = pretty "def" <+> pretty name <+> pretty "=" <+> pretty body
+  pretty (TLEnum name variants) = pretty "enum" <+> pretty name <+> pretty "{" <> line <> (nest 4 $ vsep (map (\(f, ts) -> pretty f <+> pretty "[" <+> hsep (map pretty ts) <+> pretty "]") variants)) <> line <> pretty "}"
 
-prettyProg :: (Pretty t) => Prog t -> String
-prettyProg (Prog stmts) = unlines $ map prettyStmt stmts
-
-prettyStmt :: (Pretty t) => TLStmt t -> String
-prettyStmt (TLExp name _ body) = name ++ " = " ++ prettyExpr body
-prettyStmt (TLEnum name variants) = "enum " ++ name ++ " {" ++ intercalate ", " (map (\(f, ts) -> f ++ "[ " ++ intercalate ", " (map pretty ts) ++ " ]") variants) ++ "}"
-
-prettyExpr :: (Pretty t) => Expr t -> String
-prettyExpr (EId i) = i
-prettyExpr (EString s) = show s
-prettyExpr (EInt i) = show i
-prettyExpr (EApp e1 e2) = "(" ++ prettyExpr e1 ++ " " ++ prettyExpr e2 ++ ")"
-prettyExpr (ELam arg argT body _) = "(\\" ++ "(" ++ arg ++ " : " ++ pretty argT ++ ") -> " ++ prettyExpr body ++ ")"
-prettyExpr (ELetrec bindings body) = "letrec " ++ intercalate ", " (map (\(name, t, expr) -> name ++ " : " ++ pretty t ++ " = " ++ prettyExpr expr) bindings) ++ " in " ++ prettyExpr body
-prettyExpr (EIf cond b1 b2) = "(if " ++ prettyExpr cond ++ " then " ++ prettyExpr b1 ++ " else " ++ prettyExpr b2 ++ ")"
-prettyExpr (EMatch e0 branches) = "match " ++ prettyExpr e0 ++ " { " ++ intercalate ", " (map prettyBranch branches) ++ " }"
-  where prettyBranch (EBranch cons args body) = cons ++ " " ++ unwords args ++ " => " ++ prettyExpr body

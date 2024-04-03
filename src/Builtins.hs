@@ -6,8 +6,7 @@ import Val ( VEnv, LVal(..) )
 import AST ()
 import Err ( LErr (LBug) )
 import Env ( extendEnv )
-import Ty ( LType (..) )
-import Pretty (pretty)
+import Ty ( LType (..), pretty )
 import qualified TAST
 
 data NamedBi = NamedBi String LType LVal
@@ -108,5 +107,5 @@ makeBifFromBinOp name op =
         (Just a'', Just b'') -> Right $ cV $ op a'' b''
         _ -> Left $ LBug $ "bin op " ++ name ++ " type error." ++ expected ++ actual
           where
-            expected = " expected types: " ++ pretty (aTy, bTy)
-            actual = " actual expressions: " ++ pretty (a', b')
+            expected = " expected types: " ++ show (pretty (aTy, bTy))
+            actual = " actual expressions: " ++ show (pretty (a', b'))

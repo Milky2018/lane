@@ -15,4 +15,4 @@ def take (n : Int) (s : Stream) : List =
         scons hd tl => cons hd (take (n - 1) (tl unit))
     }
 
-def main : List = take 4 ones 
+def main : List = take 2 ones 

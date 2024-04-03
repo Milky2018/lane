@@ -1,15 +1,17 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
 module Ty (LType (..), pretty, UDT) where
-import Pretty (Pretty (pretty))
+
+import Prettyprinter
 
 data LType = 
     LTLam LType LType
   | LTId String 
-  deriving (Show, Eq) 
+  deriving (Eq) 
 
 type UDT = [String]
 
 instance Pretty LType where 
-  pretty (LTLam t1 t2) = "(" ++ pretty t1 ++ " -> " ++ pretty t2 ++ ")"
-  pretty (LTId name) = name
+  pretty (LTLam t1 t2) = parens $ pretty t1 <+> pretty "->" <+> pretty t2
+  pretty (LTId name) = pretty name
+

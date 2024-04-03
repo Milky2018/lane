@@ -38,4 +38,7 @@ def eval (e : Expr) (env : Env) : Val = match e {
 
 def example : Expr = app (app (lam "x" (lam "y" (app (id "x") (id "y")))) (lam "x" (id "x"))) (lit 10)
 
-def main : Val = eval example empty 
+def main : Int = match eval example empty {
+    intVal n => n, 
+    _ => 0
+}

@@ -25,6 +25,7 @@ dependencies:
 - parsec
 - mtl
 - directory 
+- prettyprinter
 
 ghc-options:
 - -Wall

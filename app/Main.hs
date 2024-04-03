@@ -4,6 +4,7 @@ import System.Environment (getArgs)
 
 import Interpreter (lanei)
 import Profile (laneProfile)
+import Prettyprinter (pretty)
 
 main :: IO () 
 main = do 
@@ -14,5 +15,5 @@ main = do
       files <- mapM readFile fileNames
       case command of 
         "profile" -> mapM_ laneProfile files
-        "run" -> mapM_ (print . lanei) files
+        "run" -> mapM_ (print . show . pretty . lanei) files
         _ -> putStrLn "Usage: lane profile|run files"

@@ -5,8 +5,7 @@ module Val (LVal(..), LBif, VEnv) where
 import AST
 import Err
 import Env
-import Data.List (intercalate)
-import Pretty (Pretty (pretty))
+import Prettyprinter
 
 data LVal 
   = LValInt Int
@@ -17,13 +16,13 @@ data LVal
   | LValEnum String String [LVal]
 
 instance Pretty LVal where
-  pretty (LValInt i) = show i
-  pretty (LValString s) = s
-  pretty (LValLam _ _ _) = "<lambda>"
-  pretty (LValBif _) = "<builtin>"
-  pretty (LValStruct s fields) = s ++ " {" ++ intercalate "," (map (\(f, v) -> f ++ " = " ++ pretty v) fields) ++ "}"
-  pretty (LValEnum enum var []) = enum ++ "." ++ var
-  pretty (LValEnum enum var fields) = "(" ++ enum ++ "." ++ var ++ " " ++ unwords (map pretty fields) ++ ")"
+  pretty (LValInt i) = pretty i
+  pretty (LValString s) = pretty s
+  pretty (LValLam _ _ _) = pretty "<lambda>"
+  pretty (LValBif _) = pretty "<builtin>"
+  pretty (LValStruct s fields) = hsep [pretty s, pretty "{", hsep $ punctuate comma (map (\(f, v) -> pretty f <+> pretty "=" <+> pretty v) fields), pretty "}"]
+  pretty (LValEnum enum var []) = hcat [pretty enum, pretty ".", pretty var]
+  pretty (LValEnum enum var fields) = parens $ hcat [pretty enum, pretty ".", pretty var] <+> hsep (map pretty fields)
 
 type VEnv = Env String LVal
 

@@ -1,13 +1,15 @@
-module Err (LErr (..), LResult, reportErr) where 
-import Ty ( pretty, LType )
+module Err (LErr (..), LResult, pretty) where 
+import Ty ( LType )
 import TAST (MTExpr)
 import AST (LExpr)
+import Prettyprinter
+import Data.List.NonEmpty (NonEmpty, map, toList)
 
 data LErr = 
     LTErr MTExpr LType LType
   | LTFiledNotFound String
   | LBug String 
-  | LMultiErr [LErr]
+  | LMultiErr (NonEmpty LErr)
   | LTopLevelDefNoAnnotation String
   | LVariableNotInScope String
   | LFunctionArgumentTypeMissing String 
@@ -16,20 +18,21 @@ data LErr =
   | LPatternHasWrongNumberOfArguments String [String] 
   | LBranchesHaveDifferentTypes LType LType 
   | LNoPatternMatched LExpr 
-  deriving (Show, Eq)
+  deriving (Eq)
 
 type LResult = Either LErr
 
-reportErr :: LErr -> String
-reportErr (LTErr e t1 t2) = "Type error: expression " ++ pretty e ++ "\n\texpected " ++ pretty t1 ++ "\n\tbut got " ++ pretty t2
-reportErr (LTFiledNotFound s) = "field " ++ s ++ " not found"
-reportErr (LBug s) = "bug found: " ++ s
-reportErr (LMultiErr errs) = unlines $ map reportErr errs
-reportErr (LTopLevelDefNoAnnotation name) = "Top level expressions need type annotations: " ++ name 
-reportErr (LVariableNotInScope var) = "Variable not in scope: " ++ var
-reportErr (LFunctionArgumentTypeMissing arg) = "Argument is missing type annotation " ++ arg
-reportErr (LLetrecBindingTypeMissing name) = "Letrec binding is missing type annotation " ++ name
-reportErr (LConstructorNotInScope name) = "Constructor not in scope: " ++ name
-reportErr (LPatternHasWrongNumberOfArguments cons args) = "Pattern " ++ cons ++ " has wrong number of arguments: " ++ show args
-reportErr (LBranchesHaveDifferentTypes t1 t2) = "Branches have different types: " ++ pretty t1 ++ " and " ++ pretty t2
-reportErr (LNoPatternMatched e) = "No pattern matched: " ++ pretty e
+instance Pretty LErr where 
+  pretty (LTErr e t1 t2) = pretty "Type error: expression " <> pretty e <> pretty "\n\texpected " <> pretty t1 <> pretty "\n\tbut got " <> pretty t2
+  pretty (LTFiledNotFound s) = pretty "field " <> pretty s <> pretty " not found"
+  pretty (LBug s) = pretty "bug found: " <> pretty s
+  pretty (LMultiErr errs) = vsep $ toList $ Data.List.NonEmpty.map pretty errs
+  pretty (LTopLevelDefNoAnnotation name) = pretty "Top level expressions need type annotations: " <> pretty name 
+  pretty (LVariableNotInScope var) = pretty "Variable not in scope: " <> pretty var
+  pretty (LFunctionArgumentTypeMissing arg) = pretty "Argument is missing type annotation " <> pretty arg
+  pretty (LLetrecBindingTypeMissing name) = pretty "Letrec binding is missing type annotation " <> pretty name
+  pretty (LConstructorNotInScope name) = pretty "Constructor not in scope: " <> pretty name
+  pretty (LPatternHasWrongNumberOfArguments cons args) = pretty "Pattern " <> pretty cons <> pretty " has wrong number of arguments: " <> pretty args
+  pretty (LBranchesHaveDifferentTypes t1 t2) = pretty "Branches have different types: " <> pretty t1 <> pretty " and " <> pretty t2
+  pretty (LNoPatternMatched e) = pretty "No pattern matched: " <> pretty e
+
