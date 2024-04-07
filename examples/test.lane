@@ -1,9 +1,0 @@
-def and (a : Bool) (b : Bool) : Bool = match a {
-    true => match b {
-        true => true, 
-        _ => false
-    },
-    false => false 
-}
-
-def main : Bool = and true true
