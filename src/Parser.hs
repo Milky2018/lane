@@ -40,7 +40,7 @@ pParens = Text.Parsec.Token.parens lexer
 
 pBraces = Text.Parsec.Token.braces lexer
 
-pBrackets = Text.Parsec.Token.brackets lexer 
+pBrackets = Text.Parsec.Token.brackets lexer
 
 pReserved = Text.Parsec.Token.reserved lexer
 
@@ -149,13 +149,13 @@ pAtom =
       try pIf,
       try pLam,
       try pMatch, 
-      pInt,
+      try pInt,
       pString,
       pId
     ]
     <?> "atom"
 
-pInt = natural lexer >>= \i -> return $ REInt (fromIntegral i)
+pInt = integer lexer >>= \i -> return $ REInt (fromIntegral i)
 
 pField = do
   fieldName <- pIdentifier

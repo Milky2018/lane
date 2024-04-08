@@ -15,5 +15,5 @@ main = do
       files <- mapM readFile fileNames
       case command of 
         "profile" -> mapM_ laneProfile files
-        "run" -> mapM_ (print . show . pretty . lanei) files
+        "run" -> mapM_ (print . pretty . lanei) files
         _ -> putStrLn "Usage: lane profile|run files"
