@@ -94,6 +94,14 @@ tc (ELam x mt1 e mt2) (Just (LTLam t1 t2)) env udt = do
 tc (ELam _x _mt1 _e _mt2) (Just t) _ _ = Left $
   LTErr (ELam _x _mt1 _e _mt2) t (LTLam (fromMaybe t _mt1) (fromMaybe t _mt2))
 
+tc (ETypeLam x e) Nothing env udt = do
+  t <- tc e Nothing env udt
+  return $ LTAll x t
+tc (ETypeLam x e) (Just (LTAll x' t)) env udt = do
+  t' <- tc e Nothing (extendEnv x (LTId x') env) udt
+  if t == t' then return (LTAll x t) else Left $ LTErr (ETypeLam x e) (LTAll x t) (LTAll x t')
+tc (ETypeLam _x _e) (Just t) _ _ = Left $ LTErr (ETypeLam _x _e) t (LTAll _x t)
+
 tc (ELetrec bindings e) should env udt = do
   newEnv <- foldM
       (\env' (name, mt, _expr) -> case mt of
@@ -123,6 +131,27 @@ tc (EMatch e0 branches) t env udt = do
     (\t1 t2 -> if t1 == t2 then return t1 else Left $ LBranchesHaveDifferentTypes t1 t2)
     (Data.List.NonEmpty.head branchTypes)
     branchTypes
+
+tc (ETypeApp e t) should env udt = do
+  t' <- case t of 
+    Just t'' -> return t''
+    Nothing -> Left $ LBug "Type application without type"
+  t'' <- tc e Nothing env udt
+  res <- case t'' of 
+    LTAll arg ty -> subst arg t' ty
+    _ -> Left $ LTypeAppOnNonForall t''
+  case should of
+    Just should' | should' == res -> return res
+    Just should' -> Left $ LTErr (ETypeApp e t) should' res
+    -- Just should' -> Left $ LBug "Ah?"
+    Nothing -> return res
+
+-- subst arg t ty
+-- ty[arg := t]
+subst :: String -> LType -> LType -> LResult LType
+subst arg t (LTLam t1 t2) = LTLam <$> subst arg t t1 <*> subst arg t t2
+subst arg t (LTId x) = return $ if x == arg then t else LTId x
+subst arg t (LTAll x ty) = if x == arg then return (LTAll x ty) else LTAll x <$> subst arg t ty
 
 -- tcBranch (target type, e0 type, env, udt, branch)
 tcBranch :: Maybe LType -> LType -> TEnv -> UDT -> EBranch (Maybe LType) -> LResult LType

@@ -19,6 +19,7 @@ data LErr =
   | LBranchesHaveDifferentTypes LType LType 
   | LNoPatternMatched LExpr 
   | LTypeNotInEnv LType 
+  | LTypeAppOnNonForall LType 
   deriving (Eq)
 
 type LResult = Either LErr
@@ -37,3 +38,4 @@ instance Pretty LErr where
   pretty (LBranchesHaveDifferentTypes t1 t2) = pretty "Branches have different types: " <> pretty t1 <> pretty " and " <> pretty t2
   pretty (LNoPatternMatched e) = pretty "No pattern matched: " <> pretty e
   pretty (LTypeNotInEnv t) = pretty "Type not in environment: " <> pretty t
+  pretty (LTypeAppOnNonForall t) = pretty "Type application on non-forall type: " <> pretty t

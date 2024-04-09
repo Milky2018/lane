@@ -82,6 +82,7 @@ eval (EApp e1 e2) env = do
       bif v2
     _ -> Left (LBug (show (pretty e1) ++ "not a function"))
 eval (ELam arg _ body _) env = return $ LValLam arg body env
+eval (ETypeLam _ e) env = eval e env 
 -- eval (EFix arg _ body _) env = mfix $ \val -> do
 --   let newEnv = extendEnv arg val env
 --   eval body newEnv
@@ -100,6 +101,7 @@ eval (EIf cond b1 b2) env = do
   if v1 == trueVal then eval b1 env
   else if v1 == falseVal then eval b2 env
   else Left (LBug "not a boolean")
+eval (ETypeApp e _) env = eval e env
 eval e@(EMatch e0 branches) env = do
   v0 <- eval e0 env 
   case v0 of 

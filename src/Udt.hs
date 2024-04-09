@@ -46,3 +46,4 @@ initialTEnv prog@(Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
 typeIn :: LType -> UDT -> Bool 
 typeIn (LTId name) udt = name `elem` udt
 typeIn (LTLam t1 t2) udt = typeIn t1 udt && typeIn t2 udt
+typeIn (LTAll _ t) udt = typeIn t udt

@@ -42,6 +42,8 @@ pBraces = Text.Parsec.Token.braces lexer
 
 pBrackets = Text.Parsec.Token.brackets lexer
 
+pAngles = Text.Parsec.Token.angles lexer
+
 pReserved = Text.Parsec.Token.reserved lexer
 
 pSemiSep = Text.Parsec.Token.semiSep lexer
@@ -103,6 +105,7 @@ pTLFunc :: Parser RTLStmt
 pTLFunc = do
   _ <- pReserved resDef
   name <- pIdentifier
+  typeArgs <- many (pAngles pIdentifier)
   args <- many1 (pParens pTypedName)
   t <-
     do
@@ -112,7 +115,7 @@ pTLFunc = do
       <|> return Nothing
   _ <- pReserved resAssign
   body <- pExpr
-  return $ RTLFunc name args body t
+  return $ RTLFunc name typeArgs args body t
 
 pTLEnum :: Parser RTLStmt 
 pTLEnum = do 
@@ -150,12 +153,18 @@ pAtom =
       try pLam,
       try pMatch, 
       try pInt,
+      try pTypeApp,
       pString,
       pId
     ]
     <?> "atom"
 
-pInt = integer lexer >>= \i -> return $ REInt (fromIntegral i)
+pTypeApp = do 
+  _ <- pReserved resAt
+  ty <- pType
+  return $ RETypeApp ty
+
+pInt = natural lexer >>= \i -> return $ REInt (fromIntegral i)
 
 pField = do
   fieldName <- pIdentifier
@@ -175,7 +184,16 @@ pType =
 pType' :: Parser RType
 pType' = pParens pType <|> pTypeAtom <?> "type"
 
-pTypeAtom = (pIdentifier >>= \name -> return $ RTId name) <?> "type atom"
+pTypeAtom = pTypeAll <|> pTypeId <?> "type atom"
+
+pTypeAll = do
+  name <- pAngles pIdentifier
+  ty <- pType
+  return $ RTAll name ty
+
+pTypeId = do
+  id' <- pIdentifier
+  return $ RTId id'
 
 pArrowType = do
   _ <- pReserved resArrow
@@ -286,7 +304,8 @@ laneReservedOps =
     resDiv,
     resAdd,
     resSub,
-    resAssign
+    resAssign,
+    resAt
   ]
 
 resArrow = "->"
@@ -344,6 +363,8 @@ resDot = "."
 resEnum = "enum"
 
 resMatch = "match"
+
+resAt = "@"
 
 opTable =
   [ infixLeftOps [resEq, resNeq, resLt, resGt, resLeq, resGeq],

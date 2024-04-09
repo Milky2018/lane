@@ -2,4 +2,4 @@ def f (x : Int) : Int = x + 1
 
 def id (k : Int -> Int) (p : Int) : Int = k p 
 
-def main : Int = id f 1
+def main : Int = id f 1 
