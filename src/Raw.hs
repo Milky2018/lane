@@ -45,7 +45,7 @@ data RExpr
 
 instance Pretty RExpr where 
   pretty (REInt i) = pretty i
-  pretty (REString s) = pretty s
+  pretty (REString s) = pretty "\"" <> pretty s <> pretty "\""
   pretty (REId i) = pretty i
   pretty (RELet bindings e) = pretty "let" <+> hsep (map (\(TypedName name ty, body) -> pretty name <+> pretty ":" <+> pretty ty <+> pretty "=" <+> pretty body) bindings) <+> pretty "in" <+> pretty e
   pretty (RELetrec bindings e) = pretty "letrec" <+> hsep (map (\(TypedName name ty, body) -> pretty name <+> pretty ":" <+> pretty ty <+> pretty "=" <+> pretty body) bindings) <+> pretty "in" <+> pretty e

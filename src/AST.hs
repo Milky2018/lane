@@ -57,7 +57,7 @@ transBranch f (EBranch cons pats body) = EBranch cons pats (transExpr f body)
 
 instance (Pretty t) => Pretty (Expr t) where
   pretty (EId i) = pretty i
-  pretty (EString s) = pretty s
+  pretty (EString s) = pretty "\"" <> pretty s <> pretty "\""
   pretty (EInt i) = pretty i
   pretty (EApp e1 e2) = parens $ pretty e1 <+> pretty e2
   pretty (ELam arg argT body _) = 
