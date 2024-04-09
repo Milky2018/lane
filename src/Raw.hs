@@ -6,7 +6,7 @@ import AST
     TLStmt (..), EBranch (..),
   )
 import qualified Data.Bifunctor
-import TAST (MTProg, MTStmt, MTExpr)
+import TAST (MTProg, MTStmt)
 import Ty (LType (..))
 import Prettyprinter
 import Data.List.NonEmpty (NonEmpty(..))
@@ -37,7 +37,7 @@ data RExpr
   | RELet [(TypedName, RExpr)] RExpr -- let x1 : t1 = e1, x2 : t2 = e2 ... in expr
   | RELetrec [(TypedName, RExpr)] RExpr -- letrec f1 : t1 = e1, f2 : t2 = e2 ... in expr
   | REBin String RExpr RExpr -- expr + expr
-  | RELam [TypedName] RExpr (Maybe RType) -- fn (x1 : t1) (x2 : t2) ... \=> expr
+  | RELam [String] [TypedName] RExpr (Maybe RType) -- fn <A1> <A2> ... (x1 : t1) (x2 : t2) ... \=> expr
   | REIf RExpr RExpr RExpr -- if expr then expr else expr
   | REMatch RExpr [RBranch] -- match expr { C1 x1 x2 ... \=> expr, C2 x1 x2 ... \=> expr, ... }
   | RETypeApp RType -- @type
@@ -51,7 +51,7 @@ instance Pretty RExpr where
   pretty (RELetrec bindings e) = pretty "letrec" <+> hsep (map (\(TypedName name ty, body) -> pretty name <+> pretty ":" <+> pretty ty <+> pretty "=" <+> pretty body) bindings) <+> pretty "in" <+> pretty e
   pretty (REBin " " e1 e2) = parens $ pretty e1 <+> pretty e2
   pretty (REBin op e1 e2) = parens $ pretty e1 <+> pretty op <+> pretty e2
-  pretty (RELam args e retT) = parens $ pretty "\\" <> hsep (map pretty args) <+> pretty "->" <+> pretty e <+> maybe mempty (\t -> pretty ":" <+> pretty t) retT
+  pretty (RELam typeArgs args e retT) = parens $ hsep (map (angles . pretty) typeArgs) <+> pretty "\\" <> hsep (map pretty args) <+> pretty "->" <+> pretty e <+> maybe mempty (\t -> pretty ":" <+> pretty t) retT
   pretty (REIf cond b1 b2) = pretty "if" <+> pretty cond <+> pretty "then" <+> pretty b1 <+> pretty "else" <+> pretty b2
   pretty (REMatch e branches) = pretty "match" <+> pretty e <+> pretty "{" <+> hsep (punctuate comma (map pretty branches)) <+> pretty "}"
   pretty (RETypeApp ty) = pretty "@" <> pretty ty
@@ -90,15 +90,11 @@ trans (RProg re) = Prog (map transTLStmt re)
       TLExp
         name
         (transType <$> combineForallTypes typeArgs <$> combineTypes (map (\(TypedName _ ty') -> ty') args) ty)
-        (addTypeArgs typeArgs $ transExpr (RELam args body ty))
+        (transExpr (RELam typeArgs args body ty))
     transTLStmt (RTLEnum name fields) =
       TLEnum
         name
         (map (Data.Bifunctor.second (map (Just . transType))) fields)
-    
-    addTypeArgs :: [String] -> MTExpr -> MTExpr 
-    addTypeArgs [] e = e
-    addTypeArgs (x : xs) e = ETypeLam x (addTypeArgs xs e)
 
     combineTypes :: [Maybe RType] -> Maybe RType -> Maybe RType
     combineTypes [] rt = rt
@@ -137,10 +133,11 @@ trans (RProg re) = Prog (map transTLStmt re)
     transExpr (REBin op e1 e2) = EApp (EApp (EId op) (transExpr e1)) (transExpr e2)
     -- fn (x1 : t1) (x2 : t2) : rt => body
     -- fn (x1 : t) : ? => fn (x2 : t2) : rt => body
-    transExpr (RELam args e retT) = case args of
+    transExpr (RELam [] args e retT) = case args of
       [] -> error "compiler error: RELam with empty argument list"
       [TypedName var ty] -> ELam var (fmap transType ty) (transExpr e) (transType <$> retT)
-      (TypedName var ty) : rest -> ELam var (fmap transType ty) (transExpr (RELam rest e Nothing)) (transType <$> Nothing)
+      (TypedName var ty) : rest -> ELam var (fmap transType ty) (transExpr (RELam [] rest e Nothing)) (transType <$> Nothing)
+    transExpr (RELam (targ : targs) args e retT) = ETypeLam targ (transExpr (RELam targs args e retT))
     transExpr (REIf cond b1 b2) = EIf (transExpr cond) (transExpr b1) (transExpr b2)
     -- match e0 { pat1 => e1, pat2 => e2 }
     transExpr (REMatch _e0 []) = error "compiler error: REMatch with empty branch list"

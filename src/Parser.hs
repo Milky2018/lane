@@ -241,6 +241,7 @@ pLetrecClause = do
 
 pLam = do
   _ <- pReserved resLam
+  typeArgs <- many (pAngles pIdentifier)
   arg <- many1 (pParens pTypedName <|> pUntypedName)
   t <-
     do
@@ -250,7 +251,7 @@ pLam = do
       <|> return Nothing
   _ <- pReserved resFat
   body <- pExpr
-  return $ RELam arg body t
+  return $ RELam typeArgs arg body t
 
 pIf = do
   _ <- pReserved resIf
