@@ -20,12 +20,13 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/Lane#readme>
 
 dependencies:
-- base 
+- base
 - containers
 - parsec
 - mtl
 - directory 
 - prettyprinter
+- Cabal
 
 ghc-options:
 - -Wall

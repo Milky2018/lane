@@ -13,16 +13,16 @@ data TLStmt t
   deriving (Eq)
 
 data Expr t
-  = EInt Int
-  | EString String
-  | EId String
-  | EApp (Expr t) (Expr t)
-  | ELam String t (Expr t) t
-  | ETypeLam String (Expr t)
-  | ELetrec [(String, t, Expr t)] (Expr t)
-  | EIf (Expr t) (Expr t) (Expr t)
-  | EMatch (Expr t) (NonEmpty (EBranch t))
-  | ETypeApp (Expr t) t 
+  = EInt Int -- [int]
+  | EString String -- [str] 
+  | EId String -- [id]
+  | EApp (Expr t) (Expr t) -- e1 e2
+  | ELam String t (Expr t) t -- \x -> e
+  | ETypeLam String (Expr t) -- \A -> e
+  | ETypeApp (Expr t) t -- e[t]
+  | ELetrec [(String, t, Expr t)] (Expr t) -- letrec x1 = e1, x2 = e2, ... in e
+  | EIf (Expr t) (Expr t) (Expr t) -- if e1 then e2 else e3
+  | EMatch (Expr t) (NonEmpty (EBranch t)) -- match e { branch1, branch2, ... }
   deriving (Eq)
 
 data EBranch t = EBranch String [String] (Expr t) deriving (Eq)

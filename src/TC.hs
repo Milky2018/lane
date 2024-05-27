@@ -152,6 +152,7 @@ subst :: String -> LType -> LType -> LResult LType
 subst arg t (LTLam t1 t2) = LTLam <$> subst arg t t1 <*> subst arg t t2
 subst arg t (LTId x) = return $ if x == arg then t else LTId x
 subst arg t (LTAll x ty) = if x == arg then return (LTAll x ty) else LTAll x <$> subst arg t ty
+subst _ _ (LTVar v) = Left $ LBug $ "There should not be type variable " ++ v
 
 -- tcBranch (target type, e0 type, env, udt, branch)
 tcBranch :: Maybe LType -> LType -> TEnv -> UDT -> EBranch (Maybe LType) -> LResult LType
