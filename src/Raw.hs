@@ -7,7 +7,7 @@ import AST
   )
 import qualified Data.Bifunctor
 import TAST (MTProg, MTStmt)
-import Ty (LCon (..), LKind (..))
+import Ty (LCon (..), typeForall)
 import Prettyprinter
 import Data.List.NonEmpty (NonEmpty(..))
 
@@ -19,7 +19,7 @@ instance Pretty RProg where
 data RTLStmt
   = RTLFunc String [String] [TypedName] RExpr (Maybe RType) -- def f <A1> <A2> (x1 : t1) (x2 : t2) ... = expr
   | RTLExp TypedName RExpr -- def x : t = expr
-  | RTLEnum String [(String, [RType])] -- enum E { C1[t11, t12, ... ], C2[t21, t22, ... ], ... }
+  | RTLEnum String [String] [(String, [RType])] -- enum E A1 A2 ... { C1[t11, t12, ... ], C2[t21, t22, ... ], ... }
   deriving (Eq)
 
 instance Pretty RTLStmt where
@@ -27,8 +27,8 @@ instance Pretty RTLStmt where
     pretty "def" <+> pretty name <+> hsep (map (angles . pretty) typeArgs) <+> hsep (map pretty args) <+> pretty "=" <+> pretty body <+> maybe mempty (\t -> pretty ":" <+> pretty t) ty
   pretty (RTLExp (TypedName name ty) body) =
     pretty "def" <+> pretty name <+> pretty ":" <+> pretty ty <+> pretty "=" <+> pretty body
-  pretty (RTLEnum name fields) =
-    pretty "enum" <+> pretty name <+> hsep (map pretty fields)
+  pretty (RTLEnum name targs fields) =
+    pretty "enum" <+> pretty name <+> hsep (map pretty targs) <+> hsep (map pretty fields)
 
 data RExpr
   = REInt Int -- 1 | 2 | 3 | ...
@@ -65,12 +65,14 @@ data RType
   = RTFunc RType RType
   | RTId String
   | RTAll String RType 
+  | RTApp RType RType 
   deriving (Eq)
 
 instance Pretty RType where 
   pretty (RTFunc t1 t2) = parens $ pretty t1 <+> pretty "->" <+> pretty t2
   pretty (RTId i) = pretty i
   pretty (RTAll i t) = parens $ angles (pretty i) <+> pretty t
+  pretty (RTApp t1 t2) = parens $ pretty t1 <+> pretty t2
 
 data TypedName = TypedName String (Maybe RType) deriving (Eq)
 
@@ -91,9 +93,10 @@ trans (RProg re) = Prog (map transTLStmt re)
         name
         (transType <$> combineForallTypes typeArgs <$> combineTypes (map (\(TypedName _ ty') -> ty') args) ty)
         (transExpr (RELam typeArgs args body ty))
-    transTLStmt (RTLEnum name fields) =
+    transTLStmt (RTLEnum name targs fields) =
       TLEnum
         name
+        targs 
         (map (Data.Bifunctor.second (map (Just . transType))) fields)
 
     combineTypes :: [Maybe RType] -> Maybe RType -> Maybe RType
@@ -146,6 +149,7 @@ trans (RProg re) = Prog (map transTLStmt re)
 
     transType (RTFunc t1 t2) = LTApp (LTApp LTArr (transType t1)) (transType t2)
     transType (RTId i) = LTId i
-    transType (RTAll a t) = LTApp (LTAll LKType) (LTLam a (transType t))
+    transType (RTAll a t) = typeForall a (transType t) 
+    transType (RTApp t1 t2) = LTApp (transType t1) (transType t2)
 
     transBranch (RBranch cons args body) = EBranch cons args (transExpr body)

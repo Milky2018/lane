@@ -9,7 +9,7 @@ newtype Prog t = Prog [TLStmt t] deriving (Eq)
 
 data TLStmt t
   = TLExp String t (Expr t)
-  | TLEnum String [(String, [t])]
+  | TLEnum String [String] [(String, [t])]
   deriving (Eq)
 
 data Expr t
@@ -38,7 +38,7 @@ transProg f (Prog stmts) = Prog $ map (transStmt f) stmts
 
 transStmt :: (a -> b) -> TLStmt a -> TLStmt b
 transStmt f (TLExp name ty body) = TLExp name (f ty) (transExpr f body)
-transStmt f (TLEnum enum variants) = TLEnum enum (map (Data.Bifunctor.second (map f)) variants)
+transStmt f (TLEnum enum targs variants) = TLEnum enum targs (map (Data.Bifunctor.second (map f)) variants)
 
 transExpr :: (a -> b) -> Expr a -> Expr b
 transExpr _f (EInt i) = EInt i
@@ -82,5 +82,5 @@ instance (Pretty t) => Pretty (Prog t) where
 
 instance (Pretty t) => Pretty (TLStmt t) where
   pretty (TLExp name t body) = pretty "def" <+> pretty name <+> pretty ":" <+> pretty t <+> pretty "=" <+> pretty body
-  pretty (TLEnum name variants) = pretty "enum" <+> pretty name <+> pretty "{" <> line <> (nest 4 $ vsep (map (\(f, ts) -> pretty f <+> pretty "[" <+> hsep (map pretty ts) <+> pretty "]") variants)) <> line <> pretty "}"
+  pretty (TLEnum name targs variants) = pretty "enum" <+> pretty name <+> hsep (map pretty targs) <+> pretty "{" <> line <> (nest 4 $ vsep (map (\(f, ts) -> pretty f <+> pretty "[" <+> hsep (map pretty ts) <+> pretty "]") variants)) <> line <> pretty "}"
 

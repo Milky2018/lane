@@ -13,8 +13,12 @@ simpleScan :: Univ -> MTProg -> Univ
 simpleScan oldUdt (Prog defs) = foldl addDef oldUdt defs
   where
     addDef :: Univ -> MTStmt -> Univ
-    addDef udt (TLEnum name _) = extendEnv name LKType udt
+    addDef udt (TLEnum name targs _) = extendEnv name (foldr (\_ acc -> LKArr LKType acc) LKType targs) udt
     addDef udt _ = udt
+
+makeForallType :: [String] -> LCon -> LCon
+makeForallType [] ty = ty
+makeForallType (a:as) ty = LTAll a LKType (makeForallType as ty)
 
 -- Add top level definitions to the type environment. Now, the top level 
 -- definitions will be added one by one, which does not support mutual 
@@ -26,22 +30,24 @@ initialTEnv :: MTProg -> TEnv -> Univ -> LResult (TEnv, Univ)
 initialTEnv prog@(Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
   where
     addDef :: (TEnv, Univ) -> MTStmt -> LResult (TEnv, Univ)
-    addDef (env, udt) (TLExp name mty _expr) = case mty of 
-      Just ty -> return (extendEnv name ty env, udt)
+    addDef (env, univ) (TLExp name mty _expr) = case mty of 
+      Just c -> case calcKind c univ of 
+        LKType -> return (extendEnv name c env, univ)
+        k -> Left $ LConstructorIsNotType name k
       Nothing -> Left $ LTopLevelDefNoAnnotation name 
 
-    addDef (env, udt) (TLEnum name variants) = do 
-      let udt' = extendEnv name LKType udt
-      let ty = LTId name 
+    addDef (env, udt) (TLEnum name targs variants) = do 
+      let kind = foldr (\_ acc -> LKArr LKType acc) LKType targs
+      let udt' = extendEnv name kind udt
+      let udt'' = foldr (\a acc -> extendEnv a LKType acc) udt' targs
+      let ty = foldl LTApp (LTId name) (map LTId targs)
       variants' <- mapM (\(variantName, tys) -> do
         tys' <- mapM (\mty -> case mty of
-          Just ty' | ty' `isType` simpleScan oldUdt prog -> Right ty'
-          Just ty' -> Left $ LTypeNotInEnv ty'
+          Just ty' -> case calcKind ty' (simpleScan udt'' prog) of 
+            LKType -> Right ty'
+            k -> Left $ LConstructorIsNotType variantName k
           Nothing -> Left $ LBug "Enum variants need type annotations") tys
         return (variantName, tys')) variants
-      let addVariant env' (varName, tys) = extendEnv varName (foldr typeArr ty tys) env'
+      let addVariant env' (varName, tys) = extendEnv varName (makeForallType targs (foldr typeArr ty tys)) env'
       let env' = foldl addVariant env variants'
       return (env', udt')
-
-isType :: LCon -> Univ -> Bool 
-isType c univ = calcKind c univ == LKType

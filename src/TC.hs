@@ -7,7 +7,7 @@ import Builtins ( addTBuiltins, stringType, boolType, intType )
 import Env ( emptyEnv, lookupEnv, extendEnv )
 import Err ( LResult, LErr(..) )
 import TAST ( MTProg, TEnv, MTStmt, MTExpr )
-import Ty ( LCon (..), LCon, Univ, LKind (..), typeArr, typeForall )
+import Ty ( LCon (..), LCon, Univ, typeArr, typeForall, subst )
 import Data.Maybe (fromMaybe, fromJust)
 import Data.List.NonEmpty (NonEmpty(..), map, head)
 import Builtintypes (addBuiltinTypes)
@@ -42,7 +42,7 @@ tcStmt (TLExp _name ty body) env udt =
   case tc body ty env udt of
     Right _ -> Nothing
     Left err -> Just err
-tcStmt (TLEnum _name _variants) _env _udt = Nothing
+tcStmt (TLEnum _name _targs _variants) _env _udt = Nothing
 
 -- This type checker uses a simple bidirectional algorithm
 -- tc :: expr -> expected type -> type env -> udt -> result 
@@ -97,7 +97,7 @@ tc (ELam _x _mt1 _e _mt2) (Just t) _ _ = Left $
 tc (ETypeLam x e) Nothing env udt = do
   t <- tc e Nothing env udt
   return $ typeForall x t
-tc (ETypeLam x e) (Just (LTApp (LTAll LKType) (LTLam x' t))) env udt = do
+tc (ETypeLam x e) (Just (LTAll x' _k t)) env udt = do
   t' <- tc e Nothing (extendEnv x (LTId x') env) udt
   if t == t' then return (typeForall x t) else Left $ LTErr (ETypeLam x e) (typeForall x t) (typeForall x t')
 tc (ETypeLam _x _e) (Just t) _ _ = Left $ LTErr (ETypeLam _x _e) t (typeForall _x t)
@@ -138,23 +138,13 @@ tc (ETypeApp e t) should env udt = do
     Nothing -> Left $ LBug "Type application without type"
   t'' <- tc e Nothing env udt
   res <- case t'' of 
-    LTApp (LTAll LKType) (LTLam arg ty) -> subst arg t' ty
+    LTAll arg _k ty -> return $ subst arg t' ty
     _ -> Left $ LTypeAppOnNonForall t''
   case should of
     Just should' | should' == res -> return res
     Just should' -> Left $ LTErr (ETypeApp e t) should' res
     -- Just should' -> Left $ LBug "Ah?"
     Nothing -> return res
-
--- subst arg t ty
--- ty[arg := t]
-subst :: String -> LCon -> LCon -> LResult LCon
-subst _ _ LTArr = return LTArr 
-subst arg t (LTId x) = return $ if x == arg then t else LTId x
-subst _ _ (LTAll k) = return $ LTAll k 
-subst arg t (LTApp c1 c2) = LTApp <$> subst arg t c1 <*> subst arg t c2
-subst arg t (LTLam a c) = if a == arg then return (LTLam a c) else LTLam a <$> subst arg t c
-subst _ _ (LTVar v) = Left $ LBug $ "There should not be type variable " ++ v
 
 -- tcBranch (target type, e0 type, env, udt, branch)
 tcBranch :: Maybe LCon -> LCon -> TEnv -> Univ -> EBranch (Maybe LCon) -> LResult LCon

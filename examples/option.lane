@@ -1,0 +1,9 @@
+enum Option A {
+    some (val : A), 
+    none
+}
+
+def main : Option Int = 
+  let x = some [Int] 1 
+    , y = none 
+  in x

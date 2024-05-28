@@ -121,8 +121,9 @@ pTLEnum :: Parser RTLStmt
 pTLEnum = do 
   _ <- pReserved resEnum 
   enumName <- pIdentifier 
+  typeArgs <- many pIdentifier
   variants <- pBraces (sepBy pVariant (pReserved resComma))
-  return $ RTLEnum enumName variants 
+  return $ RTLEnum enumName typeArgs variants 
 
 pVariant :: Parser (String, [RType])
 pVariant = do 
@@ -159,15 +160,14 @@ pAtom =
       try pLam,
       try pMatch, 
       try pInt,
-      try pTypeApp,
+      try pTApp,
       pString,
       pId
     ]
     <?> "atom"
 
-pTypeApp = do 
-  _ <- pReserved resAt
-  ty <- pType
+pTApp = do 
+  ty <- pBrackets pType
   return $ RETypeApp ty
 
 pInt = natural lexer >>= \i -> return $ REInt (fromIntegral i)
@@ -187,10 +187,17 @@ pType =
   try (buildExpressionParser [[Infix pArrowType AssocRight]] pType')
     <?> "type"
 
-pType' :: Parser RType
-pType' = pParens pType <|> pTypeAtom <?> "type"
+pType' = try pTypeApp <|> pTypeAtom <?> "type"
+
+pType'' :: Parser RType
+pType'' = pParens pType <|> pTypeAtom <?> "type"
 
 pTypeAtom = pTypeAll <|> pTypeId <?> "type atom"
+
+pTypeApp = do
+  ty1 <- pType''
+  ty2 <- many1 pType'' 
+  return $ foldl RTApp ty1 ty2
 
 pTypeAll = do
   name <- pAngles pIdentifier

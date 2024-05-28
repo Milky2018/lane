@@ -1,5 +1,5 @@
 module Err (LErr (..), LResult, pretty) where 
-import Ty ( LCon )
+import Ty ( LCon, LKind )
 import TAST (MTExpr)
 import AST (LExpr)
 import Prettyprinter
@@ -20,6 +20,7 @@ data LErr =
   | LNoPatternMatched LExpr 
   | LTypeNotInEnv LCon 
   | LTypeAppOnNonForall LCon 
+  | LConstructorIsNotType String LKind
   deriving (Eq)
 
 type LResult = Either LErr
@@ -39,3 +40,4 @@ instance Pretty LErr where
   pretty (LNoPatternMatched e) = pretty "No pattern matched: " <> pretty e
   pretty (LTypeNotInEnv t) = pretty "Type not in environment: " <> pretty t
   pretty (LTypeAppOnNonForall t) = pretty "Type application on non-forall type: " <> pretty t
+  pretty (LConstructorIsNotType name k) = pretty "Constructor is not a type: " <> pretty name <> pretty " with kind " <> pretty k

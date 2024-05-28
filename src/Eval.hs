@@ -32,7 +32,7 @@ createInitialEnv :: LProg -> VEnv -> VEnv
 createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
   where
     addDef env (TLExp name _ expr) = extendEnv name (evalTopLevelExpr newEnv expr) env
-    addDef env (TLEnum enum vars) = foldl addVariant env vars
+    addDef env (TLEnum enum targs vars) = foldl addVariant env vars
       where
         addVariant :: VEnv -> (String, [()]) -> VEnv
         addVariant env' (varName, fields) = extendEnv varName (val varName fields) env'

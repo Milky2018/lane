@@ -24,6 +24,7 @@ main = hspec $ do
       checkExample "examples/multiletrec.lane" (FinalVal trueVal)
       checkExample "examples/enum.lane" (FinalVal (LValEnum "MyBool" "myTrue" []))
       checkExample "examples/enumargs.lane" (FinalVal (LValEnum "OptionInt" "some" [LValInt 1]))
+      checkExample "examples/option.lane" (FinalVal (LValEnum "Option" "some" [LValInt 1]))
       checkExample "examples/nat.lane" (FinalVal (LValEnum "Nat" "suc" [LValEnum "Nat" "suc" [LValEnum "Nat" "zero" []]]))
       checkExample "examples/cal.lane" (FinalVal (LValInt (-4)))
       checkExample "examples/codata1.lane" (FinalVal (LValEnum "List" "cons" [LValInt 1, LValEnum "List" "cons" [LValInt 1, LValEnum "List" "nil" []]]))
@@ -32,3 +33,4 @@ main = hspec $ do
       checkExample "examples/forall.lane" (FinalVal (LValInt 10))
       checkExample "examples/lexscope0.lane" (FinalVal (LValInt 5))
       checkExample "examples/lexscope1.lane" (FinalVal (LValInt 16))
+      checkExample "examples/hkf.lane" (FinalVal (LValInt 10))
