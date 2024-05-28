@@ -14,6 +14,7 @@ import Control.Monad (foldM)
 import Data.List.NonEmpty (toList)
 
 import Prettyprinter (Pretty, pretty)
+import Control.Monad.State 
 
 data FinalVal =
     FinalVal LVal
@@ -50,7 +51,7 @@ createInitialEnv (Prog defs) oldEnv = foldl addDef oldEnv defs
     newEnv = createInitialEnv (Prog defs) oldEnv
 
 evalTopLevelExpr :: VEnv -> LExpr -> LVal
-evalTopLevelExpr env expr = case eval expr env of
+evalTopLevelExpr env expr = case evalStateT (eval expr) env of
   Right value -> value
   Left err    -> error $ "evalTopLevelDef: " ++ show (pretty expr) ++ "\n" ++ show (pretty err)
 
@@ -58,75 +59,78 @@ evalTopLevelExpr env expr = case eval expr env of
 runProg :: LProg -> FinalVal
 runProg prog =
   let env = createInitialEnv prog (addBuiltins emptyEnv)
-  in case eval (EId "main") env of
+  in case evalStateT (eval (EId "main")) env of
       Left err -> FinalErr $ show (pretty err)
       Right (LValLam _ _ _) -> FinalErr "lambda as main expression"
       Right (LValBif _) -> FinalErr "builtin function as main expression"
       Right v -> FinalVal v 
 
-eval :: LExpr -> VEnv -> LResult LVal
-eval (EInt i) env = return $ LValInt i
-eval (EString s) env = return $ LValString s
-eval (EId s) env =
-  case lookupEnv s env of
+type Eval = StateT VEnv LResult LVal
+
+eval :: LExpr -> Eval 
+eval (EInt i) = return $ LValInt i
+eval (EString s) = return $ LValString s
+eval (EId s) = do 
+  env <- get 
+  lift $ case lookupEnv s env of
     Nothing -> Left $ LBug $ "unbound variable: " ++ s
     Just v -> return v
-eval (EApp e1 e2) env = do
-  v1 <- eval e1 env
+eval (EApp e1 e2) = do
+  v1 <- eval e1 
   case v1 of
     LValLam id' e env' -> do
-      v2 <- eval e2 env
-      eval e (extendEnv id' v2 env')
+      env <- get 
+      v2 <- eval e2
+      put $ extendEnv id' v2 env'
+      result <- eval e 
+      put env  
+      return result 
     LValBif bif -> do
-      v2 <- eval e2 env
-      bif v2
-    _ -> Left (LBug (show (pretty e1) ++ "not a function"))
-eval (ELam arg _ body _) env = return $ LValLam arg body env
-eval (ETypeLam _ e) env = eval e env 
+      v2 <- eval e2 
+      lift $ bif v2
+    _ -> lift $ Left (LBug (show (pretty e1) ++ "not a function"))
+eval (ELam arg _ body _) = do 
+  env <- get 
+  return $ LValLam arg body env
+eval (ETypeLam _ e) = eval e  
 -- eval (EFix arg _ body _) env = mfix $ \val -> do
 --   let newEnv = extendEnv arg val env
 --   eval body newEnv
-eval (ELetrec bindings body) env = do
+eval (ELetrec bindings body) = do
+  env <- get 
   newEnv <- mfix $ \newEnv ->
         foldM
-          (\env' (name, _, expr) ->
-            do
-            val <- eval expr newEnv
+          (\env' (name, _, expr) -> do
+            put newEnv 
+            val <- eval expr 
             return $ extendEnv name val env')
           env
           bindings
-  eval body newEnv
-eval (EIf cond b1 b2) env = do
-  v1 <- eval cond env
-  if v1 == trueVal then eval b1 env
-  else if v1 == falseVal then eval b2 env
-  else Left (LBug "not a boolean")
-eval (ETypeApp e _) env = eval e env
-eval e@(EMatch e0 branches) env = do
-  v0 <- eval e0 env 
+  put newEnv 
+  eval body 
+eval (EIf cond b1 b2) = do
+  v1 <- eval cond 
+  if v1 == trueVal then eval b1 
+  else if v1 == falseVal then eval b2 
+  else lift $ Left (LBug "not a boolean")
+eval (ETypeApp e _) = eval e 
+eval e@(EMatch e0 branches) = do
+  v0 <- eval e0 
   case v0 of 
     LValEnum enumName variantName fields -> evalMatch variantName fields (toList branches)
-    _ -> Left $ LBug "not a variant"
+    _ -> lift $ Left $ LBug "not a variant" 
   where 
-    evalMatch :: String -> [LVal] -> [EBranch ()] -> LResult LVal
-    evalMatch var fields [] = Left $ LNoPatternMatched e
+    evalMatch :: String -> [LVal] -> [EBranch ()] -> Eval 
+    evalMatch var fields [] = lift $ Left $ LNoPatternMatched e
     evalMatch var fields (EBranch patCons patVars body : rest) = 
       if matchPattern patCons var 
-      then eval body (foldl (\env' (arg, field) -> extendEnv arg field env') env (zip patVars fields))
-      else evalMatch var fields rest
+      then do 
+        env <- get 
+        put (foldl (\env' (arg, field) -> extendEnv arg field env') env (zip patVars fields))
+        result <- eval body 
+        put env 
+        return result 
+      else evalMatch var fields rest 
 
     matchPattern :: String -> String -> Bool 
-    matchPattern patCons valCons = patCons == valCons || patCons == "_"
-  -- v <- eval e env
-  -- case v of
-  --   LValEnum enumName variantName fields -> case lookupEnv variantName env of
-  --     Nothing -> Left $ LBug $ "unbound variant: " ++ variantName
-  --     Just (LValEnum _ _ fields') -> do
-  --       let newEnv = foldl (\env' (field, field') -> extendEnv field field' env') env (zip fields fields')
-  --       case lookupEnv variantName newEnv of
-  --         Nothing -> Left $ LBug $ "unbound variant: " ++ variantName
-  --         Just (LValBif bif) -> bif v
-  --         Just (LValLam arg body env'') -> eval body newEnv
-  --         _ -> Left $ LBug $ "not a function: " ++ variantName
-  --     Just _ -> Left $ LBug $ "not a variant: " ++ variantName
-  --   _ -> Left $ LBug "not a variant"
+    matchPattern patCons valCons = patCons == valCons || patCons == "_" 
