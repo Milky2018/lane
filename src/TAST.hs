@@ -1,11 +1,11 @@
 module TAST (MTExpr, MTStmt, MTProg, TEnv) where
 
-import Ty ( LType )
+import Ty ( LCon )
 import AST (Expr (..), TLStmt (..), Prog (..))
 import Data.Map (Map)
 
-type MTExpr = Expr (Maybe LType)
-type MTStmt = TLStmt (Maybe LType)
-type MTProg = Prog (Maybe LType)
+type MTExpr = Expr (Maybe LCon)
+type MTStmt = TLStmt (Maybe LCon)
+type MTProg = Prog (Maybe LCon)
 
-type TEnv = Map String LType
+type TEnv = Map String LCon

@@ -1,12 +1,17 @@
 module Builtintypes (addBuiltinTypes) where
-import Ty (UDT)
+import Ty (Univ, LKind (..))
+import Env (extendEnv)
 
-builtinTypes :: UDT 
-builtinTypes = ["Bool", "Int", "String", "Unit"]
+builtinTypes :: [(String, LKind)] 
+builtinTypes = 
+  [ ("Bool", LKType)
+  , ("Int", LKType)
+  , ("String", LKType)
+  , ("Unit", LKType)
+  ]
 
--- Add builtin types to the type environment. 
--- Usage: addBuiltinTypes [] => 
---  [Bool |-> TVBool, 
---   Int  |-> TVInt, ... ]
-addBuiltinTypes :: UDT -> UDT
-addBuiltinTypes udt = udt ++ builtinTypes
+addBuiltinTypes :: Univ -> Univ
+addBuiltinTypes udt = foldr addType udt builtinTypes
+  where
+    addType :: (String, LKind) -> Univ -> Univ
+    addType (name, kind) = extendEnv name kind

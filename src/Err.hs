@@ -1,12 +1,12 @@
 module Err (LErr (..), LResult, pretty) where 
-import Ty ( LType )
+import Ty ( LCon )
 import TAST (MTExpr)
 import AST (LExpr)
 import Prettyprinter
 import Data.List.NonEmpty (NonEmpty, map, toList)
 
 data LErr = 
-    LTErr MTExpr LType LType
+    LTErr MTExpr LCon LCon
   | LTFiledNotFound String
   | LBug String 
   | LMultiErr (NonEmpty LErr)
@@ -16,10 +16,10 @@ data LErr =
   | LLetrecBindingTypeMissing String
   | LConstructorNotInScope String 
   | LPatternHasWrongNumberOfArguments String [String] 
-  | LBranchesHaveDifferentTypes LType LType 
+  | LBranchesHaveDifferentTypes LCon LCon 
   | LNoPatternMatched LExpr 
-  | LTypeNotInEnv LType 
-  | LTypeAppOnNonForall LType 
+  | LTypeNotInEnv LCon 
+  | LTypeAppOnNonForall LCon 
   deriving (Eq)
 
 type LResult = Either LErr

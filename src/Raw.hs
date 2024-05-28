@@ -7,7 +7,7 @@ import AST
   )
 import qualified Data.Bifunctor
 import TAST (MTProg, MTStmt)
-import Ty (LType (..))
+import Ty (LCon (..), LKind (..))
 import Prettyprinter
 import Data.List.NonEmpty (NonEmpty(..))
 
@@ -144,8 +144,8 @@ trans (RProg re) = Prog (map transTLStmt re)
     transExpr (REMatch e0 (b:bs)) = EMatch (transExpr e0) ((transBranch b) :| (map transBranch bs))
     transExpr (RETypeApp t) = error $ "compiler error: RETypeApp should have been handled by REBin: " ++ show (pretty t)
 
-    transType (RTFunc t1 t2) = LTLam (transType t1) (transType t2)
+    transType (RTFunc t1 t2) = LTApp (LTApp LTArr (transType t1)) (transType t2)
     transType (RTId i) = LTId i
-    transType (RTAll i t) = LTAll i (transType t)
+    transType (RTAll a t) = LTApp (LTAll LKType) (LTLam a (transType t))
 
     transBranch (RBranch cons args body) = EBranch cons args (transExpr body)

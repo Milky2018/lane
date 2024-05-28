@@ -6,10 +6,10 @@ import Val ( VEnv, LVal(..) )
 import AST ()
 import Err ( LErr (LBug) )
 import Env ( extendEnv )
-import Ty ( LType (..), pretty )
+import Ty ( LCon (..), pretty, typeArr )
 import qualified TAST
 
-data NamedBi = NamedBi String LType LVal
+data NamedBi = NamedBi String LCon LVal
 
 -- Add a builtin function to a value environment. For example, function "+" in 
 -- Lane is added to the value environment as a function in the interpreter 
@@ -31,16 +31,16 @@ addTBuiltin (NamedBi name ty _) = extendEnv name ty
 addTBuiltins :: TAST.TEnv -> TAST.TEnv
 addTBuiltins env = foldr addTBuiltin env builtins
 
-boolType :: LType
+boolType :: LCon
 boolType = LTId "Bool"
 
-unitType :: LType
+unitType :: LCon
 unitType = LTId "Unit"
 
-intType :: LType
+intType :: LCon
 intType = LTId "Int"
 
-stringType :: LType
+stringType :: LCon
 stringType = LTId "String"
 
 trueVal :: LVal
@@ -75,11 +75,11 @@ builtins =
 stringEq :: NamedBi
 stringEq = NamedBi "eq" t v
   where
-    t = LTLam stringType (LTLam stringType boolType)
+    t = typeArr stringType (typeArr stringType boolType)
     v = LValBif $ \(LValString s1) -> return $ LValBif $ \(LValString s2) -> return $ if s1 == s2 then trueVal else falseVal
 
 class CorrespondLValCons a where
-  correspond :: (a -> LVal, LType)
+  correspond :: (a -> LVal, LCon)
   corresback :: LVal -> Maybe a
 
 instance CorrespondLValCons Int where
@@ -101,7 +101,7 @@ makeBifFromBinOp name op =
   let (_aV, aTy) = correspond @a
       (_bV, bTy) = correspond @b
       (cV, cTy) = correspond
-  in NamedBi name (LTLam aTy (LTLam bTy cTy)) $
+  in NamedBi name (typeArr aTy (typeArr bTy cTy)) $
     LValBif $ (\p -> Right . LValBif . p) $
       \a' b' -> case (corresback a', corresback b') of
         (Just a'', Just b'') -> Right $ cV $ op a'' b''

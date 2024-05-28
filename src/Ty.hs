@@ -1,34 +1,72 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
-module Ty (LType (..), pretty, UDT) where
+module Ty (LCon (..), pretty, Univ, LKind (..), calcKind, typeArr, typeForall) where
 
 import Prettyprinter
+import Env
 
-data LType = 
-    LTLam LType LType
-  | LTId String 
-  | LTAll String LType 
-  | LTVar String 
+data LKind = 
+    LKType
+  | LKArr LKind LKind 
+  deriving (Eq)
 
-instance Eq LType where 
-  LTLam t1 t2 == LTLam t1' t2' = t1 == t1' && t2 == t2'
+data LCon = 
+    LTArr -- ->
+  | LTId String -- ti 
+  | LTAll LKind -- <A>; Now only support kind *
+  | LTVar String -- tv
+  | LTApp LCon LCon -- c1[c2]
+  | LTLam String LCon -- \A.c 
+
+subst :: String -> LCon -> LCon -> LCon
+subst _ _ LTArr = LTArr 
+subst arg t (LTId x) = if x == arg then t else LTId x 
+subst _ _ (LTAll k) = LTAll k 
+subst arg t (LTApp c1 c2) = LTApp (subst arg t c1) (subst arg t c2)
+subst arg t (LTLam a c) = if a == arg then LTLam a c else LTLam a (subst arg t c)
+subst _ _ (LTVar _v) = error "There should not be type variable"
+
+instance Eq LCon where
+  LTArr == LTArr = True 
   LTId name == LTId name' = name == name'
-  LTAll n ty == LTAll n' ty' = 
-    ty == subst ty' n' n 
-    where 
-      subst :: LType -> String -> String -> LType 
-      subst (LTId name) name' t = if name == name' then LTId t else LTId name
-      subst (LTLam t1 t2) name' t = LTLam (subst t1 name' t) (subst t2 name' t)
-      subst (LTAll name'' t) name' t' = if name'' == name' then LTAll name'' t else LTAll name'' (subst t name' t')
-      subst (LTVar v) _ _ = error $ "There should not be type variable " ++ v
-  LTVar v == _ = error $ "There should not be type variable " ++ v
-  _ == LTVar v = error $ "There should not be type variable " ++ v
+  LTAll k == LTAll k' = k == k'
+  LTVar name == LTVar name' = name == name'
+  LTApp c1 c2 == LTApp c1' c2' = c1 == c1' && c2 == c2'
+  LTLam a c == LTLam a' c' =  
+    let c'' = subst a' (LTId a) c'
+    in c == c''
   _ == _ = False
 
-type UDT = [String]
+typeArr :: LCon -> LCon -> LCon 
+typeArr t1 t2 = LTApp (LTApp LTArr t1) t2
 
-instance Pretty LType where 
-  pretty (LTLam t1 t2) = parens $ pretty t1 <+> pretty "->" <+> pretty t2
+typeForall :: String -> LCon -> LCon
+typeForall a c = LTApp (LTAll LKType) (LTLam a c)
+
+type Univ = Env String LKind  
+
+instance Pretty LKind where 
+  pretty LKType = pretty "*"
+  pretty (LKArr k1 k2) = pretty k1 <+> pretty "->" <+> pretty k2
+
+instance Pretty LCon where 
+  pretty LTArr = pretty "->"
   pretty (LTId name) = pretty name
-  pretty (LTAll name t) = parens $ angles (pretty name) <+> pretty t
+  pretty (LTAll k) = pretty "forall" <+> pretty k <> pretty "."
   pretty (LTVar name) = pretty name
+  pretty (LTApp c1 c2) = pretty c1 <+> pretty c2
+  pretty (LTLam a c) = pretty "\\" <> pretty a <> pretty "." <+> pretty c
+
+calcKind :: LCon -> Univ -> LKind
+calcKind LTArr _ = LKArr LKType (LKArr LKType LKType)
+calcKind (LTId name) udt = case lookupEnv name udt of 
+  Just k -> k
+  Nothing -> error $ "Type not in environment: " ++ name
+calcKind (LTAll k) _udt = LKArr (LKArr k LKType) LKType
+calcKind (LTVar name) udt = case lookupEnv name udt of 
+  Just k -> k
+  Nothing -> error $ "Type variable not in environment: " ++ name
+calcKind (LTApp c1 c2) udt = case calcKind c1 udt of
+  LKArr k1 k2 -> if k1 == calcKind c2 udt then k2 else error $ "Kind application mismatch" ++ show (pretty "k1: " <+> pretty k1 <+> pretty "c2::" <+> pretty (calcKind c2 udt))
+  _ -> error $ "Type application on non-forall type" ++ show (pretty c1 <+> pretty c2 <+> pretty (calcKind c1 udt))
+calcKind (LTLam a c) udt = LKArr (calcKind (LTVar a) udt) (calcKind c udt)
