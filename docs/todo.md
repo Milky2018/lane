@@ -6,7 +6,9 @@
 - [ ] Separate analysis and interpretation
 - [ ] Nameless variables
 - [ ] Compiler
-- [ ] Algebraic data types
-- [ ] Generic types 
+- [x] Algebraic data types
+- [x] Generic types 
 - [ ] IO
 - [ ] Effects
+- [ ] Irrefutable patterns as arguments
+- [ ] Type reconstruction
