@@ -128,7 +128,7 @@ eval e@(EMatch e0 branches) = do
         env <- get 
         put (foldl (\env' (arg, field) -> extendEnv arg field env') env (zip patVars fields))
         result <- eval body 
-        put env 
+        -- put env 
         return result 
       else evalMatch var fields rest 
 

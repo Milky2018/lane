@@ -29,3 +29,4 @@ main = hspec $ do
       checkExample "examples/codata1.lane" (FinalVal (LValEnum "List" "cons" [LValInt 1, LValEnum "List" "cons" [LValInt 1, LValEnum "List" "nil" []]]))
       checkExample "examples/lc.lane" (FinalVal (LValInt 10))
       checkExample "examples/forall.lane" (FinalVal (LValInt 10))
+      checkExample "examples/lexscope.lane" (FinalVal (LValInt 5))
