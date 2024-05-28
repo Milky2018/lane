@@ -1,0 +1,5 @@
+def main : Int = 
+  let x = 10 
+  in (letrec x : Int = 1 
+     in x + 5)
+     + x 

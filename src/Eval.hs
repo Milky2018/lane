@@ -107,7 +107,9 @@ eval (ELetrec bindings body) = do
           env
           bindings
   put newEnv 
-  eval body 
+  result <- eval body 
+  put env
+  return result 
 eval (EIf cond b1 b2) = do
   v1 <- eval cond 
   if v1 == trueVal then eval b1 
@@ -128,7 +130,7 @@ eval e@(EMatch e0 branches) = do
         env <- get 
         put (foldl (\env' (arg, field) -> extendEnv arg field env') env (zip patVars fields))
         result <- eval body 
-        -- put env 
+        put env 
         return result 
       else evalMatch var fields rest 
 
