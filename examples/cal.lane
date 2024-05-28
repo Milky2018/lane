@@ -1,7 +1,7 @@
 enum Expr {
-    lit[Int], 
-    add[Expr, Expr],
-    sub[Expr, Expr]
+    lit (val : Int), 
+    add (e1 : Expr) (e2 : Expr),
+    sub (e1 : Expr) (e2 : Expr)
 }
 
 def eval (expr : Expr) : Int = match expr {

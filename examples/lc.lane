@@ -1,19 +1,19 @@
 enum Expr {
-    lit[Int],
-    id[String],
-    lam[String, Expr],
-    app[Expr, Expr]
+    lit (val : Int),
+    id (var : String),
+    lam (arg : String) (body : Expr),
+    app (operator : Expr) (operand : Expr)
 }
 
 enum Env {
-    empty[], 
-    extend[String, Val, Env]
+    empty, 
+    extend (name : String) (val : Val) (origin : Env)
 }
 
 enum Val {
-    intVal[Int], 
-    lamVal[String, Expr, Env], 
-    noneVal[]
+    intVal (i : Int), 
+    lamVal (arg : String) (body : Expr) (env : Env), 
+    noneVal
 }
 
 def lookup (id : String) (env : Env) : Val = match env {

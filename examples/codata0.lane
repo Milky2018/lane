@@ -1,10 +1,10 @@
 enum Stream {
-    scons[Int, (Unit -> Stream)]
+    scons (hd: Int) (tl : Unit -> Stream)
 }
 
 enum List {
-    nil[],
-    cons[Int, List]
+    nil,
+    cons (hd : Int) (hd : List)
 }
 
 def ones : Stream = scons 1 (fn (x : Unit) => ones)

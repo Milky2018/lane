@@ -1,6 +1,6 @@
 enum Nat {
-    zero[], 
-    suc[Nat]
+    zero, 
+    suc (n : Nat)
 }
 
 def main : Nat = suc (suc zero)

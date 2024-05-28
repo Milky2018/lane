@@ -127,8 +127,14 @@ pTLEnum = do
 pVariant :: Parser (String, [RType])
 pVariant = do 
   variantName <- pIdentifier 
-  fields <- pBrackets (sepBy pType (pReserved resComma))
+  fields <- many (pParens pNamedType)
   return (variantName, fields)
+  where 
+    pNamedType = do 
+      _name <- pIdentifier 
+      _ <- pReserved resTyping 
+      ty <- pType 
+      return ty 
 
 pExpr :: Parser RExpr
 pExpr =

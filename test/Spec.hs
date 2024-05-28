@@ -27,6 +27,7 @@ main = hspec $ do
       checkExample "examples/nat.lane" (FinalVal (LValEnum "Nat" "suc" [LValEnum "Nat" "suc" [LValEnum "Nat" "zero" []]]))
       checkExample "examples/cal.lane" (FinalVal (LValInt (-4)))
       checkExample "examples/codata1.lane" (FinalVal (LValEnum "List" "cons" [LValInt 1, LValEnum "List" "cons" [LValInt 1, LValEnum "List" "nil" []]]))
+      checkExample "examples/codata0.lane" (FinalVal (LValEnum "List" "cons" [LValInt 1, LValEnum "List" "cons" [LValInt 1, LValEnum "List" "nil" []]]))
       checkExample "examples/lc.lane" (FinalVal (LValInt 10))
       checkExample "examples/forall.lane" (FinalVal (LValInt 10))
       checkExample "examples/lexscope.lane" (FinalVal (LValInt 5))

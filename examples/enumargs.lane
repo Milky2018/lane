@@ -1,6 +1,6 @@
 enum OptionInt {
-    some[Int], 
-    none[]
+    some (val : Int), 
+    none
 }
 
 def main : OptionInt = 
