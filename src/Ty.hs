@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
-module Ty (LCon (..), pretty, Univ, LKind (..), calcKind, typeArr, typeForall, subst) where
+module Ty (LCon (..), pretty, Univ, LKind (..), typeArr, typeForall, subst) where
 
 import Prettyprinter
 import Env
@@ -59,18 +59,3 @@ instance Pretty LCon where
   pretty (LTApp c1 c2) = pretty c1 <+> pretty c2
   pretty (LTLam a c) = pretty "\\" <> pretty a <> pretty "." <+> pretty c
 
-calcKind :: LCon -> Univ -> LKind
-calcKind LTArr _ = LKArr LKType (LKArr LKType LKType)
-calcKind (LTId name) udt = case lookupEnv name udt of 
-  Just k -> k
-  Nothing -> error $ "Type not in environment: " ++ name ++ show udt
-calcKind (LTAll _u _k _c) _udt = LKType 
-calcKind (LTVar name) udt = case lookupEnv name udt of 
-  Just k -> k
-  Nothing -> error $ "Type variable not in environment: " ++ name
-calcKind (LTApp c1 c2) udt = case calcKind c1 udt of
-  LKArr k1 k2 -> if k1 == calcKind c2 udt then k2 else error $ "Kind application mismatch" ++ show (pretty "k1: " <+> pretty k1 <+> pretty "c2::" <+> pretty (calcKind c2 udt))
-  _ -> error $ "Type application on non-forall type" ++ show (pretty c1 <+> pretty c2 <+> pretty (calcKind c1 udt))
-calcKind (LTLam a c) udt = 
-  let newUniv = extendEnv a LKType udt 
-  in LKArr (calcKind (LTId a) udt) (calcKind c newUniv)

@@ -21,6 +21,7 @@ data LErr =
   | LTypeNotInEnv LCon 
   | LTypeAppOnNonForall LCon 
   | LConstructorIsNotType String LKind
+  | LKindMismatch LKind LKind
   deriving (Eq)
 
 type LResult = Either LErr
@@ -41,3 +42,4 @@ instance Pretty LErr where
   pretty (LTypeNotInEnv t) = pretty "Type not in environment: " <> pretty t
   pretty (LTypeAppOnNonForall t) = pretty "Type application on non-forall type: " <> pretty t
   pretty (LConstructorIsNotType name k) = pretty "Constructor is not a type: " <> pretty name <> pretty " with kind " <> pretty k
+  pretty (LKindMismatch k1 k2) = pretty "Kind mismatch: " <> pretty k1 <> pretty " and " <> pretty k2

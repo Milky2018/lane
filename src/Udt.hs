@@ -2,12 +2,13 @@
 {-# HLINT ignore "Use lambda-case" #-}
 module Udt (initialTEnv) where
 
-import Ty (Univ, LCon(..), calcKind, LKind (..), typeArr)
+import Ty (Univ, LCon(..), LKind (..), typeArr)
 import TAST (MTProg, TEnv, MTStmt)
 import Err (LResult, LErr (..))
 import AST (TLStmt(..), Prog (..))
 import Data.Foldable (foldlM)
 import Env (extendEnv)
+import Kind (calcKind)
 
 simpleScan :: Univ -> MTProg -> Univ
 simpleScan oldUdt (Prog defs) = foldl addDef oldUdt defs
@@ -32,8 +33,9 @@ initialTEnv prog@(Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
     addDef :: (TEnv, Univ) -> MTStmt -> LResult (TEnv, Univ)
     addDef (env, univ) (TLExp name mty _expr) = case mty of 
       Just c -> case calcKind c univ of 
-        LKType -> return (extendEnv name c env, univ)
-        k -> Left $ LConstructorIsNotType name k
+        Right LKType -> return (extendEnv name c env, univ)
+        Right k -> Left $ LConstructorIsNotType name k
+        Left err -> Left err
       Nothing -> Left $ LTopLevelDefNoAnnotation name 
 
     addDef (env, udt) (TLEnum name targs variants) = do 
@@ -44,8 +46,9 @@ initialTEnv prog@(Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
       variants' <- mapM (\(variantName, tys) -> do
         tys' <- mapM (\mty -> case mty of
           Just ty' -> case calcKind ty' (simpleScan udt'' prog) of 
-            LKType -> Right ty'
-            k -> Left $ LConstructorIsNotType variantName k
+            Right LKType -> Right ty'
+            Right k -> Left $ LConstructorIsNotType variantName k
+            Left err -> Left err
           Nothing -> Left $ LBug "Enum variants need type annotations") tys
         return (variantName, tys')) variants
       let addVariant env' (varName, tys) = extendEnv varName (makeForallType targs (foldr typeArr ty tys)) env'

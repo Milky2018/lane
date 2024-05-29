@@ -32,6 +32,7 @@ library
       Err
       Eval
       Interpreter
+      Kind
       Parser
       Profile
       Raw
