@@ -12,33 +12,44 @@ enum Env {
 
 enum Val {
     intVal (i : Int), 
-    lamVal (arg : String) (body : Expr) (env : Env), 
-    noneVal
+    lamVal (arg : String) (body : Expr) (env : Env)
 }
 
-def lookup (id : String) (env : Env) : Val = match env {
-    empty => noneVal,
-    extend i v e => if eq i id then v else lookup id e 
+enum Option A {
+    some (val : A),
+    none 
 }
 
-def eval (e : Expr) (env : Env) : Val = match e {
-    lit n => intVal n, 
+def lookup (id : String) (env : Env) : Option Val = match env {
+    empty => none [Val],
+    extend i v e => if eq i id then some [Val] v else lookup id e 
+}
+
+def eval (e : Expr) (env : Env) : Option Val = match e {
+    lit n => some [Val] (intVal n), 
     id i => lookup i env,
-    lam arg body => lamVal arg body env, 
+    lam arg body => some [Val] (lamVal arg body env),
     app operator operand => 
         match eval operator env {
-            lamVal arg body env1 => 
-                let v = eval operand env 
-                in eval body (extend arg v env1)
-            , 
-            intVal n => noneVal, 
-            noneVal => noneVal
+            some e => match e {
+                lamVal arg body env1 => 
+                    match eval operand env {
+                        some v => eval body (extend arg v env1),
+                        none => none [Val]
+                    }
+                , 
+                intVal n => none [Val]
+            }, 
+            none => none [Val]
         }
 }
 
 def example : Expr = app (app (lam "x" (lam "y" (app (id "x") (id "y")))) (lam "x" (id "x"))) (lit 10)
 
 def main : Int = match eval example empty {
-    intVal n => n, 
+    some v => match v {
+        intVal n => n, 
+        _ => 0
+    }, 
     _ => 0
 }

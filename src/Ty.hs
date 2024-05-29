@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Eta reduce" #-}
-module Ty (LCon (..), pretty, Univ, LKind (..), typeArr, typeForall, subst) where
+module Ty (LCon (..), pretty, Univ, LKind (..), typeArr, typeForall, subst, tappOnType) where
 
 import Prettyprinter
 import Env
@@ -25,6 +25,10 @@ subst arg t (LTAll u k c) = if u == arg then LTAll u k c else LTAll u k (subst a
 subst arg t (LTApp c1 c2) = LTApp (subst arg t c1) (subst arg t c2)
 subst arg t (LTLam a c) = if a == arg then LTLam a c else LTLam a (subst arg t c)
 subst _ _ (LTVar _v) = error "There should not be type variable"
+
+tappOnType :: LCon -> LCon -> LCon 
+tappOnType (LTAll u _k c) c2 = subst u c2 c
+tappOnType _c1 _c2 = error "There should not be tappOnType"
 
 instance Eq LCon where
   LTArr == LTArr = True 

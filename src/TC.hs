@@ -7,7 +7,7 @@ import Builtins ( addTBuiltins, stringType, boolType, intType )
 import Env ( emptyEnv, lookupEnv, extendEnv )
 import Err ( LResult, LErr(..) )
 import TAST ( MTProg, TEnv, MTStmt, MTExpr )
-import Ty ( LCon (..), LCon, Univ, typeArr, typeForall, subst )
+import Ty ( LCon (..), LCon, Univ, typeArr, typeForall, subst, tappOnType )
 import Data.Maybe (fromMaybe, fromJust)
 import Data.List.NonEmpty (NonEmpty(..), map, head)
 import Builtintypes (addBuiltinTypes)
@@ -143,7 +143,6 @@ tc (ETypeApp e t) should env udt = do
   case should of
     Just should' | should' == res -> return res
     Just should' -> Left $ LTErr (ETypeApp e t) should' res
-    -- Just should' -> Left $ LBug "Ah?"
     Nothing -> return res
 
 -- tcBranch (target type, e0 type, env, udt, branch)
@@ -155,11 +154,22 @@ tcBranch t t0 env udt (EBranch cons args body) =
     consType <- case lookupEnv cons env of
       Just ty -> return ty
       Nothing -> Left $ LConstructorNotInScope cons
-    env' <- case addBinding consType args env of
+    -- extract type arguments of t0 
+    let t0Args = extractTypeArgs t0
+    -- apply type arguments to consType 
+    let consType' = applyTypeArgs consType (reverse t0Args)
+    env' <- case addBinding consType' args env of
       Just e -> return e
-      Nothing -> Left $ LPatternHasWrongNumberOfArguments cons args
+      Nothing -> Left $ LPatternHasWrongNumberOfArguments cons args 
     tc body t env' udt
   where
+    extractTypeArgs :: LCon -> [LCon]
+    extractTypeArgs (LTApp t1 t2) = t2 : extractTypeArgs t1
+    extractTypeArgs _ = []
+
+    applyTypeArgs :: LCon -> [LCon] -> LCon
+    applyTypeArgs t' targs = foldl tappOnType t' targs
+
     addBinding :: LCon -> [String] -> TEnv -> Maybe TEnv
     addBinding ty [] env' | ty == t0 = return env'
     addBinding (LTApp (LTApp LTArr t1) t2) (arg:args') env' = extendEnv arg t1 <$> addBinding t2 args' env'
