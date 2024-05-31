@@ -10,10 +10,10 @@ main :: IO ()
 main = do 
   args <- getArgs 
   case args of 
-    [] -> putStrLn "Usage: lane profile|run files"
+    [] -> putStrLn "Usage: lane trace|run files"
     (command : fileNames) -> do 
       files <- mapM readFile fileNames
       case command of 
-        "profile" -> mapM_ laneProfile files
+        "trace" -> mapM_ laneProfile files
         "run" -> mapM_ (print . pretty . lanei) files
-        _ -> putStrLn "Usage: lane profile|run files"
+        _ -> putStrLn "Usage: lane trace|run files"

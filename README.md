@@ -43,7 +43,7 @@ You will see:
 See the output of each stage:
 
 ```bash
-$ ./lane profile ./examples/hello.lane
+$ ./lane trace ./examples/hello.lane
 ```
 
 You will see:

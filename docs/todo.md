@@ -12,3 +12,5 @@
 - [ ] Effects
 - [ ] Irrefutable patterns as arguments
 - [ ] Type reconstruction
+- [ ] Nested patterns
+- [x] Coinductive types

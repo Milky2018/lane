@@ -32,16 +32,16 @@ addTBuiltins :: TAST.TEnv -> TAST.TEnv
 addTBuiltins env = foldr addTBuiltin env builtins
 
 boolType :: LCon
-boolType = LTId "Bool"
+boolType = LCId "Bool"
 
 unitType :: LCon
-unitType = LTId "Unit"
+unitType = LCId "Unit"
 
 intType :: LCon
-intType = LTId "Int"
+intType = LCId "Int"
 
 stringType :: LCon
-stringType = LTId "String"
+stringType = LCId "String"
 
 trueVal :: LVal
 trueVal = LValEnum "Bool" "true" []

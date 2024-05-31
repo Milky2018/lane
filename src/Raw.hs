@@ -147,9 +147,9 @@ trans (RProg re) = Prog (map transTLStmt re)
     transExpr (REMatch e0 (b:bs)) = EMatch (transExpr e0) ((transBranch b) :| (map transBranch bs))
     transExpr (RETypeApp t) = error $ "compiler error: RETypeApp should have been handled by REBin: " ++ show (pretty t)
 
-    transType (RTFunc t1 t2) = LTApp (LTApp LTArr (transType t1)) (transType t2)
-    transType (RTId i) = LTId i
+    transType (RTFunc t1 t2) = LCApp (LCApp LCArr (transType t1)) (transType t2)
+    transType (RTId i) = LCId i
     transType (RTAll a t) = typeForall a (transType t) 
-    transType (RTApp t1 t2) = LTApp (transType t1) (transType t2)
+    transType (RTApp t1 t2) = LCApp (transType t1) (transType t2)
 
     transBranch (RBranch cons args body) = EBranch cons args (transExpr body)

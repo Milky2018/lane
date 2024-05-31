@@ -20,7 +20,7 @@ simpleScan oldUdt (Prog defs) = foldl addDef oldUdt defs
 
 makeForallType :: [String] -> LCon -> LCon
 makeForallType [] ty = ty
-makeForallType (a:as) ty = LTAll a LKType (makeForallType as ty)
+makeForallType (a:as) ty = LCAll a LKType (makeForallType as ty)
 
 -- Add top level definitions to the type environment. Now, the top level 
 -- definitions will be added one by one, which does not support mutual 
@@ -45,7 +45,7 @@ initialTEnv prog@(Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
       let kind = foldr (\_ acc -> LKArr LKType acc) LKType targs -- kind of E: * -> * 
       let udt' = extendEnv name kind udt 
       let udt'' = foldr (\a acc -> extendEnv a LKType acc) udt' targs -- add A to the environment
-      let ty = foldl LTApp (LTId name) (map LTId targs)  -- ty = E[A]
+      let ty = foldl LCApp (LCId name) (map LCId targs)  -- ty = E[A]
       variants' <- mapM (\(variantName, tys) -> do
         tys' <- mapM (\mty -> case mty of
           Just ty' -> case calcKind ty' (simpleScan udt'' prog) of -- for ty' = A, A1

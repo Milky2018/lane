@@ -7,7 +7,7 @@ import Builtins ( addTBuiltins, stringType, boolType, intType )
 import Env ( emptyEnv, lookupEnv, extendEnv )
 import Err ( LResult, LErr(..) )
 import TAST ( MTProg, TEnv, MTStmt, MTExpr )
-import Ty ( LCon (..), LCon, Univ, typeArr, typeForall, subst, tappOnType )
+import Ty ( LCon (..), LCon, Univ, typeArr, typeForall, subst, conApp )
 import Data.Maybe (fromMaybe, fromJust)
 import Data.List.NonEmpty (NonEmpty(..), map, head)
 import Builtintypes (addBuiltinTypes)
@@ -71,8 +71,8 @@ tc (EApp e1 e2) t env udt = do
     Nothing -> do
       t1 <- tc e1 Nothing env udt
       case t1 of
-        LTApp (LTApp LTArr t1') t1'' | t1' == t2 -> return t1''
-        LTApp (LTApp LTArr t1') _ -> Left $ LTErr e2 t1' t2
+        LCApp (LCApp LCArr t1') t1'' | t1' == t2 -> return t1''
+        LCApp (LCApp LCArr t1') _ -> Left $ LTErr e2 t1' t2
         t'' -> Left $ LTErr (EApp e1 e2) t2 t''
 
 tc (ELam x mt1 e mt2) Nothing env udt = do
@@ -82,7 +82,7 @@ tc (ELam x mt1 e mt2) Nothing env udt = do
   let env' = extendEnv x t1 env
   t2 <- tc e mt2 env' udt
   return (typeArr t1 t2)
-tc (ELam x mt1 e mt2) (Just (LTApp (LTApp LTArr t1) t2)) env udt = do
+tc (ELam x mt1 e mt2) (Just (LCApp (LCApp LCArr t1) t2)) env udt = do
   let eShouldType = tc e (Just t2) (extendEnv x t1 env) udt
   _ <- case (mt1, mt2) of
     (Just t1', Just t2') | t1 == t1' && t2 == t2' -> eShouldType
@@ -97,8 +97,8 @@ tc (ELam _x _mt1 _e _mt2) (Just t) _ _ = Left $
 tc (ETypeLam x e) Nothing env udt = do
   t <- tc e Nothing env udt
   return $ typeForall x t
-tc (ETypeLam x e) (Just (LTAll x' _k t)) env udt = do
-  t' <- tc e Nothing (extendEnv x (LTId x') env) udt
+tc (ETypeLam x e) (Just (LCAll x' _k t)) env udt = do
+  t' <- tc e Nothing (extendEnv x (LCId x') env) udt
   if t == t' then return (typeForall x t) else Left $ LTErr (ETypeLam x e) (typeForall x t) (typeForall x t')
 tc (ETypeLam _x _e) (Just t) _ _ = Left $ LTErr (ETypeLam _x _e) t (typeForall _x t)
 
@@ -138,7 +138,7 @@ tc (ETypeApp e t) should env udt = do
     Nothing -> Left $ LBug "Type application without type"
   t'' <- tc e Nothing env udt
   res <- case t'' of 
-    LTAll arg _k ty -> return $ subst arg t' ty
+    LCAll arg _k ty -> return $ subst arg t' ty
     _ -> Left $ LTypeAppOnNonForall t''
   case should of
     Just should' | should' == res -> return res
@@ -164,13 +164,13 @@ tcBranch t t0 env udt (EBranch cons args body) =
     tc body t env' udt
   where
     extractTypeArgs :: LCon -> [LCon]
-    extractTypeArgs (LTApp t1 t2) = t2 : extractTypeArgs t1
+    extractTypeArgs (LCApp t1 t2) = t2 : extractTypeArgs t1
     extractTypeArgs _ = []
 
     applyTypeArgs :: LCon -> [LCon] -> LCon
-    applyTypeArgs t' targs = foldl tappOnType t' targs
+    applyTypeArgs t' targs = foldl conApp t' targs
 
     addBinding :: LCon -> [String] -> TEnv -> Maybe TEnv
     addBinding ty [] env' | ty == t0 = return env'
-    addBinding (LTApp (LTApp LTArr t1) t2) (arg:args') env' = extendEnv arg t1 <$> addBinding t2 args' env'
+    addBinding (LCApp (LCApp LCArr t1) t2) (arg:args') env' = extendEnv arg t1 <$> addBinding t2 args' env'
     addBinding _ _ _ = Nothing
