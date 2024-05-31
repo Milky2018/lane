@@ -323,61 +323,33 @@ laneReservedOps =
   ]
 
 resArrow = "->"
-
 resEq = "=="
-
 resNeq = "!="
-
 resLt = "<"
-
 resGt = ">"
-
 resLeq = "<="
-
 resGeq = ">="
-
 resMul = "*"
-
 resDiv = "/"
-
 resAdd = "+"
-
 resSub = "-"
-
 resAssign = "="
-
 resLet = "let"
-
 resLetrec = "letrec"
-
 resIn = "in"
-
 resIf = "if"
-
 resThen = "then"
-
 resElse = "else"
-
 resLam = "fn"
-
 resDef = "def"
-
 resSpace = " "
-
 resTyping = ":"
-
 resFat = "=>"
-
 resSemi = ";"
-
 resComma = ","
-
 resDot = "."
-
 resEnum = "enum"
-
 resMatch = "match"
-
 resAt = "@"
 
 opTable =

@@ -23,6 +23,7 @@ data Expr t
   | ELetrec [(String, t, Expr t)] (Expr t) -- letrec x1 = e1, x2 = e2, ... in e
   | EIf (Expr t) (Expr t) (Expr t) -- if e1 then e2 else e3
   | EMatch (Expr t) (NonEmpty (EBranch t)) -- match e { branch1, branch2, ... }
+  | EAs (Expr t) t -- e as t
   deriving (Eq)
 
 data EBranch t = EBranch String [String] (Expr t) deriving (Eq)
@@ -51,6 +52,7 @@ transExpr f (ELetrec bindings body) = ELetrec (map (\(name, ty, expr) -> (name, 
 transExpr f (EIf e1 e2 e3) = EIf (transExpr f e1) (transExpr f e2) (transExpr f e3)
 transExpr f (EMatch e branches) = EMatch (transExpr f e) (Data.List.NonEmpty.map (transBranch f) branches)
 transExpr f (ETypeApp e ty) = ETypeApp (transExpr f e) (f ty)
+transExpr f (EAs e ty) = EAs (transExpr f e) (f ty)
 
 transBranch :: (a -> b) -> EBranch a -> EBranch b
 transBranch f (EBranch cons pats body) = EBranch cons pats (transExpr f body)
@@ -76,6 +78,7 @@ instance (Pretty t) => Pretty (Expr t) where
     pretty "match" <+> pretty e0 <+> pretty "{" <+> hsep (toList $ Data.List.NonEmpty.map prettyBranch branches) <+> pretty "}"
     where prettyBranch (EBranch cons args body) = pretty cons <+> hsep (map pretty args) <+> pretty "=>" <+> pretty body
   pretty (ETypeApp e ty) = pretty e <+> brackets (pretty ty)
+  pretty (EAs e ty) = pretty e <+> pretty "as" <+> pretty ty
 
 instance (Pretty t) => Pretty (Prog t) where
   pretty (Prog stmts) = vsep $ map pretty stmts

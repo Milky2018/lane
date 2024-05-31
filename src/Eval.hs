@@ -136,3 +136,5 @@ eval e@(EMatch e0 branches) = do
 
     matchPattern :: String -> String -> Bool 
     matchPattern patCons valCons = patCons == valCons || patCons == "_" 
+
+eval (EAs e t) = eval e 

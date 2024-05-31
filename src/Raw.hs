@@ -40,7 +40,7 @@ data RExpr
   | RELam [String] [TypedName] RExpr (Maybe RType) -- fn <A1> <A2> ... (x1 : t1) (x2 : t2) ... \=> expr
   | REIf RExpr RExpr RExpr -- if expr then expr else expr
   | REMatch RExpr [RBranch] -- match expr { C1 x1 x2 ... \=> expr, C2 x1 x2 ... \=> expr, ... }
-  | RETypeApp RType -- @type
+  | RETypeApp RType -- [type]
   deriving (Eq)
 
 instance Pretty RExpr where 
@@ -145,6 +145,7 @@ trans (RProg re) = Prog (map transTLStmt re)
     -- match e0 { pat1 => e1, pat2 => e2 }
     transExpr (REMatch _e0 []) = error "compiler error: REMatch with empty branch list"
     transExpr (REMatch e0 (b:bs)) = EMatch (transExpr e0) ((transBranch b) :| (map transBranch bs))
+    -- [t]
     transExpr (RETypeApp t) = error $ "compiler error: RETypeApp should have been handled by REBin: " ++ show (pretty t)
 
     transType (RTFunc t1 t2) = LCApp (LCApp LCArr (transType t1)) (transType t2)
