@@ -1,3 +1,5 @@
 def applyId <A> (f : <B> B -> B) (a : A) : A = f [A] a
 
 def main : Int = applyId [Int] (fn <A> (a : A) => a) 10
+
+

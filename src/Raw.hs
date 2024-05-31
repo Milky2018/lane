@@ -54,7 +54,7 @@ instance Pretty RExpr where
   pretty (RELam typeArgs args e retT) = parens $ hsep (map (angles . pretty) typeArgs) <+> pretty "\\" <> hsep (map pretty args) <+> pretty "->" <+> pretty e <+> maybe mempty (\t -> pretty ":" <+> pretty t) retT
   pretty (REIf cond b1 b2) = pretty "if" <+> pretty cond <+> pretty "then" <+> pretty b1 <+> pretty "else" <+> pretty b2
   pretty (REMatch e branches) = pretty "match" <+> pretty e <+> pretty "{" <+> hsep (punctuate comma (map pretty branches)) <+> pretty "}"
-  pretty (RETypeApp ty) = pretty "@" <> pretty ty
+  pretty (RETypeApp ty) = parens (pretty ty)
 
 data RBranch = RBranch String [String] RExpr deriving (Eq)
 

@@ -9,6 +9,7 @@ import AST (TLStmt(..), Prog (..))
 import Data.Foldable (foldlM)
 import Env (extendEnv)
 import Kind (calcKind)
+import Prettyprinter
 
 simpleScan :: Univ -> MTProg -> Univ
 simpleScan oldUdt (Prog defs) = foldl addDef oldUdt defs
@@ -38,16 +39,20 @@ initialTEnv prog@(Prog defs) oldEnv oldUdt = foldlM addDef (oldEnv, oldUdt) defs
         Left err -> Left err
       Nothing -> Left $ LTopLevelDefNoAnnotation name 
 
+    -- for "enum E A { var1 (a : A) (a1 : A1), var2 (a2 : A2)}"
+    -- add "a1 : <A> A -> A1 -> E" and "a2 : <A> A2 -> E" to the environment
     addDef (env, udt) (TLEnum name targs variants) = do 
-      let kind = foldr (\_ acc -> LKArr LKType acc) LKType targs
-      let udt' = extendEnv name kind udt
-      let udt'' = foldr (\a acc -> extendEnv a LKType acc) udt' targs
-      let ty = foldl LTApp (LTId name) (map LTId targs)
+      let kind = foldr (\_ acc -> LKArr LKType acc) LKType targs -- kind of E: * -> * 
+      let udt' = extendEnv name kind udt 
+      let udt'' = foldr (\a acc -> extendEnv a LKType acc) udt' targs -- add A to the environment
+      let ty = foldl LTApp (LTId name) (map LTId targs)  -- ty = E[A]
       variants' <- mapM (\(variantName, tys) -> do
         tys' <- mapM (\mty -> case mty of
-          Just ty' -> case calcKind ty' (simpleScan udt'' prog) of 
+          Just ty' -> case calcKind ty' (simpleScan udt'' prog) of -- for ty' = A, A1
             Right LKType -> Right ty'
-            Right k -> Left $ LConstructorIsNotType variantName k
+            Right k -> error $ "something wrong. Kind:  " ++ show (pretty k) ++ "; Type: " ++ show (pretty ty')
+            -- TODO: support higher kinds
+            -- Right k -> Left $ LConstructorIsNotType variantName k
             Left err -> Left err
           Nothing -> Left $ LBug "Enum variants need type annotations") tys
         return (variantName, tys')) variants

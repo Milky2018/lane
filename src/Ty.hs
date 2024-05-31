@@ -56,10 +56,10 @@ instance Pretty LKind where
   pretty (LKArr k1 k2) = pretty k1 <+> pretty "->" <+> pretty k2
 
 instance Pretty LCon where 
-  pretty LTArr = pretty "->"
+  pretty LTArr = pretty "(->)"
   pretty (LTId name) = pretty name
   pretty (LTAll u k c) = pretty "forall" <+> pretty u <+> pretty "::" <+> pretty k <> pretty "." <+> pretty c 
   pretty (LTVar name) = pretty name
-  pretty (LTApp c1 c2) = pretty c1 <+> pretty c2
+  pretty (LTApp c1 c2) = parens (pretty c1 <+> pretty c2)
   pretty (LTLam a c) = pretty "\\" <> pretty a <> pretty "." <+> pretty c
 

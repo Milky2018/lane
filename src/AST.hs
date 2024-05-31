@@ -75,12 +75,15 @@ instance (Pretty t) => Pretty (Expr t) where
   pretty (EMatch e0 branches) =
     pretty "match" <+> pretty e0 <+> pretty "{" <+> hsep (toList $ Data.List.NonEmpty.map prettyBranch branches) <+> pretty "}"
     where prettyBranch (EBranch cons args body) = pretty cons <+> hsep (map pretty args) <+> pretty "=>" <+> pretty body
-  pretty (ETypeApp e ty) = pretty e <+> pretty "@" <> pretty ty
+  pretty (ETypeApp e ty) = pretty e <+> brackets (pretty ty)
 
 instance (Pretty t) => Pretty (Prog t) where
   pretty (Prog stmts) = vsep $ map pretty stmts
 
 instance (Pretty t) => Pretty (TLStmt t) where
   pretty (TLExp name t body) = pretty "def" <+> pretty name <+> pretty ":" <+> pretty t <+> pretty "=" <+> pretty body
-  pretty (TLEnum name targs variants) = pretty "enum" <+> pretty name <+> hsep (map pretty targs) <+> pretty "{" <> line <> (nest 4 $ vsep (map (\(f, ts) -> pretty f <+> pretty "[" <+> hsep (map pretty ts) <+> pretty "]") variants)) <> line <> pretty "}"
+  pretty (TLEnum name targs variants) = 
+    pretty "enum" <+> pretty name 
+    <+> hsep (map pretty targs) 
+    <+> braces (line <> indent 4 (vsep (map (\(f, ts) -> pretty f <+> hsep (map (parens. pretty) ts)) variants)) <> line)
 
