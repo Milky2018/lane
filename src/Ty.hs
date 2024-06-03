@@ -18,6 +18,7 @@ data LCon =
   | LCApp LCon LCon -- c1[c2]
   | LCLam String LCon -- \A.c 
 
+-- subst var c1 c2 == c2[c1 / var]
 subst :: String -> LCon -> LCon -> LCon
 subst _ _ LCArr = LCArr 
 subst arg t (LCId x) = if x == arg then t else LCId x 

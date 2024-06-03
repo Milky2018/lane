@@ -145,14 +145,6 @@ tc (ETypeApp e t) should env univ = do
     Just should' -> Left $ LTErr (ETypeApp e t) should' res
     Nothing -> return res
 
-tc (EAs e (Just t)) (Just should) env univ = do
-  t' <- tc e (Just t) env univ
-  if t' == t then return t else Left $ LTErr (EAs e (Just t)) should t'
-tc (EAs e (Just t)) Nothing env univ = do 
-  t' <- tc e (Just t) env univ 
-  return t'
-tc (EAs _e Nothing) _ _ _ = Left $ LBug "Type ascription without type"
-
 -- tcBranch (target type, e0 type, env, univ, branch)
 tcBranch :: Maybe LCon -> LCon -> TEnv -> Univ -> EBranch (Maybe LCon) -> LResult LCon
 tcBranch t t0 env univ (EBranch cons args body) =
