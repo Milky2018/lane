@@ -25,7 +25,7 @@ subst arg t (LCId x) = if x == arg then t else LCId x
 subst arg t (LCAll u k c) = if u == arg then LCAll u k c else LCAll u k (subst arg t c)  
 subst arg t (LCApp c1 c2) = LCApp (subst arg t c1) (subst arg t c2)
 subst arg t (LCLam a c) = if a == arg then LCLam a c else LCLam a (subst arg t c)
-subst _ _ (LCVar _v) = error "There should not be type variable"
+subst arg t (LCVar v) = if arg == v then t else LCVar v
 
 conApp :: LCon -> LCon -> LCon 
 conApp (LCAll u _k c) c2 = subst u c2 c

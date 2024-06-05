@@ -2,7 +2,7 @@ module Profile (laneProfile) where
   
 import Parser (parseLaneProg)
 import Raw (trans)
-import TC (typeCheck, elimTypeProg)
+import Infer (typeCheck, elimTypeProg)
 import Eval (runProg)
 import Prettyprinter (pretty)
 

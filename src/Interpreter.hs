@@ -4,7 +4,7 @@ import AST (LProg)
 import Parser (parseLaneProg)
 import Eval ( FinalVal(..), runProg )
 import Raw (trans)
-import TC ( typeCheck, elimTypeProg )
+import Infer ( typeCheck, elimTypeProg )
 import Err ( pretty )
 
 parseAndTrans :: String -> LProg

@@ -31,13 +31,13 @@ library
       Env
       Err
       Eval
+      Infer
       Interpreter
       Kind
       Parser
       Profile
       Raw
       TAST
-      TC
       Ty
       Udt
       Val
